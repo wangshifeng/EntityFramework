@@ -1004,7 +1004,13 @@ FROM [Weapon] AS [w]");
             AssertSql(
                 @"SELECT [g].[Nickname], [g].[SquadId], [g].[AssignedCityName], [g].[CityOrBirthName], [g].[Discriminator], [g].[FullName], [g].[HasSoulPatch], [g].[LeaderNickname], [g].[LeaderSquadId], [g].[Rank]
 FROM [Gear] AS [g]
-WHERE [g].[Discriminator] IN (N'Officer', N'Gear') AND ([g].[LeaderNickname] = N'Marcus')");
+WHERE [g].[Discriminator] IN (N'Officer', N'Gear') AND (CASE
+    WHEN [g].[Nickname] IS NULL
+    THEN NULL ELSE CASE
+        WHEN [g].[LeaderNickname] = N'Marcus'
+        THEN CAST(1 AS BIT) ELSE CAST(0 AS BIT)
+    END
+END = 1)");
         }
 
         public override void Null_propagation_optimization2()
@@ -1034,7 +1040,13 @@ WHERE [g].[Discriminator] IN (N'Officer', N'Gear') AND (RIGHT([g].[LeaderNicknam
             AssertSql(
                 @"SELECT [g].[Nickname], [g].[SquadId], [g].[AssignedCityName], [g].[CityOrBirthName], [g].[Discriminator], [g].[FullName], [g].[HasSoulPatch], [g].[LeaderNickname], [g].[LeaderSquadId], [g].[Rank]
 FROM [Gear] AS [g]
-WHERE [g].[Discriminator] IN (N'Officer', N'Gear') AND (CAST(LEN([g].[LeaderNickname]) AS int) = 5)");
+WHERE [g].[Discriminator] IN (N'Officer', N'Gear') AND (CASE
+    WHEN [g].[LeaderNickname] IS NULL
+    THEN NULL ELSE CASE
+        WHEN CAST(LEN([g].[LeaderNickname]) AS int) = 5
+        THEN CAST(1 AS BIT) ELSE CAST(0 AS BIT)
+    END
+END = 1)");
         }
 
         public override void Null_propagation_optimization5()
@@ -1044,7 +1056,13 @@ WHERE [g].[Discriminator] IN (N'Officer', N'Gear') AND (CAST(LEN([g].[LeaderNick
             AssertSql(
                 @"SELECT [g].[Nickname], [g].[SquadId], [g].[AssignedCityName], [g].[CityOrBirthName], [g].[Discriminator], [g].[FullName], [g].[HasSoulPatch], [g].[LeaderNickname], [g].[LeaderSquadId], [g].[Rank]
 FROM [Gear] AS [g]
-WHERE [g].[Discriminator] IN (N'Officer', N'Gear') AND (CAST(LEN([g].[LeaderNickname]) AS int) = 5)");
+WHERE [g].[Discriminator] IN (N'Officer', N'Gear') AND (CASE
+    WHEN [g].[LeaderNickname] IS NOT NULL
+    THEN CASE
+        WHEN CAST(LEN([g].[LeaderNickname]) AS int) = 5
+        THEN CAST(1 AS BIT) ELSE CAST(0 AS BIT)
+    END ELSE NULL
+END = 1)");
         }
 
         public override void Null_propagation_optimization6()

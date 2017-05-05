@@ -305,5 +305,58 @@ namespace Microsoft.EntityFrameworkCore.Internal
 
             return Expression.MakeMemberAccess(expression, member);
         }
+
+        /// <summary>
+        ///     This API supports the Entity Framework Core infrastructure and is not intended to be used
+        ///     directly from your code. This API may change or be removed in future releases.
+        /// </summary>
+        public static bool IsNullPropagationCandidate(
+            [NotNull] this ConditionalExpression conditionalExpression,
+            out Expression testExpression,
+            out Expression resultExpression)
+        {
+            testExpression = null;
+            resultExpression = null;
+            var binaryTest = conditionalExpression.Test as BinaryExpression;
+
+            if (binaryTest == null
+                || !(binaryTest.NodeType == ExpressionType.Equal
+                     || binaryTest.NodeType == ExpressionType.NotEqual))
+            {
+                return false;
+            }
+
+            var isLeftNullConstant = binaryTest.Left.IsNullConstantExpression();
+            var isRightNullConstant = binaryTest.Right.IsNullConstantExpression();
+
+            if (isLeftNullConstant == isRightNullConstant)
+            {
+                return false;
+            }
+
+            if (binaryTest.NodeType == ExpressionType.Equal)
+            {
+                var ifTrueConstant = conditionalExpression.IfTrue as ConstantExpression;
+                if (ifTrueConstant == null
+                    || ifTrueConstant.Value != null)
+                {
+                    return false;
+                }
+            }
+            else
+            {
+                var ifFalseConstant = conditionalExpression.IfFalse as ConstantExpression;
+                if (ifFalseConstant == null
+                    || ifFalseConstant.Value != null)
+                {
+                    return false;
+                }
+            }
+
+            testExpression = isLeftNullConstant ? binaryTest.Right : binaryTest.Left;
+            resultExpression = binaryTest.NodeType == ExpressionType.Equal ? conditionalExpression.IfFalse : conditionalExpression.IfTrue;
+
+            return true;
+        }
     }
 }
