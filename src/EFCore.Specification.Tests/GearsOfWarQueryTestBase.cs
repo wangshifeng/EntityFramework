@@ -1042,7 +1042,7 @@ namespace Microsoft.EntityFrameworkCore.Specification.Tests
             using (var context = CreateContext())
             {
                 var query = context.Gears
-                    .Where(g => (g == null ? (bool?)null : (bool?)(g.LeaderNickname == "Marcus")) == (bool?)true)
+                    .Where(g => (g == null ? null : g.LeaderNickname) == "Marcus" == (bool?)true)
                     .ToList();
 
                 var result = query.ToList();
@@ -1102,7 +1102,7 @@ namespace Microsoft.EntityFrameworkCore.Specification.Tests
             using (var context = CreateContext())
             {
                 var query = context.Gears
-                    .Where(g => (null == EF.Property<string>(g, "LeaderNickname") ? (bool?)null : (bool?)(g.LeaderNickname.Length == 5)) == (bool?)true)
+                    .Where(g => (null == EF.Property<string>(g, "LeaderNickname") ? (int?)null : g.LeaderNickname.Length) == 5 == (bool?)true)
                     .ToList();
 
                 var result = query.ToList();
@@ -1120,7 +1120,7 @@ namespace Microsoft.EntityFrameworkCore.Specification.Tests
             using (var context = CreateContext())
             {
                 var query = context.Gears
-                    .Where(g => (null != g.LeaderNickname ? (bool?)(EF.Property<string>(g, "LeaderNickname").Length == 5) : (bool?)null) == (bool?)true)
+                    .Where(g => (null != g.LeaderNickname ? (int?)(EF.Property<string>(g, "LeaderNickname").Length) : (int?)null) == 5 == (bool?)true)
                     .ToList();
 
                 var result = query.ToList();
@@ -1147,6 +1147,56 @@ namespace Microsoft.EntityFrameworkCore.Specification.Tests
 
                 var nickNames = result.Select(r => r.Nickname);
                 Assert.True(nickNames.Contains("Paduk"));
+            }
+        }
+
+        [ConditionalFact]
+        public virtual void Select_null_propagation_optimization7()
+        {
+            using (var context = CreateContext())
+            {
+                var query = context.Gears
+                    .Select(g => null != g.LeaderNickname ? g.LeaderNickname + g.LeaderNickname : null)
+                    .ToList();
+
+                var result = query.ToList();
+
+                Assert.Equal(5, result.Count);
+                Assert.True(result.Contains(null));
+            }
+        }
+
+        [ConditionalFact]
+        public virtual void Select_null_propagation_optimization8()
+        {
+            using (var context = CreateContext())
+            {
+                var query = context.Gears
+                    .Select(g => g != null ? g.LeaderNickname + g.LeaderNickname : null)
+                    .ToList();
+
+                var result = query.ToList();
+
+                Assert.Equal(5, result.Count);
+                Assert.True(result.Any(string.IsNullOrEmpty));
+            }
+        }
+
+        [ConditionalFact]
+        public virtual void Select_null_propagation_optimization9()
+        {
+            using (var context = CreateContext())
+            {
+                var query = context.Gears
+                    .Select(g => g != null ? (int?)g.LeaderNickname.Length : (int?)null)
+                    .ToList();
+
+                var result = query.ToList();
+
+                Assert.Equal(5, result.Count);
+                Assert.Equal(1, result.Count(r => r == null));
+                Assert.Equal(3, result.Count(r => r == 6));
+                Assert.Equal(1, result.Count(r => r == 5));
             }
         }
 
@@ -1180,6 +1230,139 @@ namespace Microsoft.EntityFrameworkCore.Specification.Tests
                 var result = query.ToList();
 
                 Assert.Equal(25, result.Count);
+            }
+        }
+
+        [ConditionalFact]
+        public virtual void Select_null_propagation_negative3()
+        {
+            using (var context = CreateContext())
+            {
+                var query = from g1 in context.Gears
+                            join g2 in context.Gears on g1.HasSoulPatch equals true into grouping
+                            from g2 in grouping.DefaultIfEmpty()
+                            orderby g2.Nickname
+                            select new { g2.Nickname, Condition = g2 != null ? (bool?)(g2.LeaderNickname != null) : (bool?)null };
+
+                var result = query.ToList();
+
+                Assert.Equal(13, result.Count);
+                Assert.Equal(null, result[0].Nickname);
+                Assert.Equal(null, result[0].Condition);
+
+                Assert.Equal("Baird", result[3].Nickname);
+                Assert.Equal(true, result[3].Condition);
+
+                Assert.Equal("Marcus", result[9].Nickname);
+                Assert.Equal(false, result[9].Condition);
+            }
+        }
+
+        [ConditionalFact(Skip = "issue #8315")]
+        public virtual void Select_null_propagation_negative4()
+        {
+            using (var context = CreateContext())
+            {
+                var query = from g1 in context.Gears
+                            join g2 in context.Gears on g1.HasSoulPatch equals true into grouping
+                            from g2 in grouping.DefaultIfEmpty()
+                            orderby g2.Nickname
+                            select g2 != null ? new Tuple<string, int>(g2.Nickname, 5) : null;
+
+                var result = query.ToList();
+            }
+        }
+
+        [ConditionalFact(Skip = "issue #8315")]
+        public virtual void Select_null_propagation_negative5()
+        {
+            using (var context = CreateContext())
+            {
+                var query = from g1 in context.Gears
+                            join g2 in context.Gears on g1.HasSoulPatch equals true into grouping
+                            from g2 in grouping.DefaultIfEmpty()
+                            orderby g2.Nickname
+                            select g2 != null ? new { g2.Nickname, Five = 5 } : null;
+
+                var result = query.ToList();
+            }
+        }
+
+        [ConditionalFact]
+        public virtual void Select_null_propagation_negative6()
+        {
+            using (var context = CreateContext())
+            {
+                var query = context.Gears
+                    .Select(g => null != g.LeaderNickname ? EF.Property<string>(g, "LeaderNickname").Length != EF.Property<string>(g, "LeaderNickname").Length : (bool?)null)
+                    .ToList();
+
+                var result = query.ToList();
+
+                Assert.Equal(5, result.Count);
+                Assert.True(result.Contains(null));
+            }
+        }
+
+        [ConditionalFact]
+        public virtual void Select_null_propagation_negative7()
+        {
+            using (var context = CreateContext())
+            {
+                var query = context.Gears
+                    .Select(g => null != g.LeaderNickname ? g.LeaderNickname == g.LeaderNickname : (bool?)null)
+                    .ToList();
+
+                var result = query.ToList();
+
+                Assert.Equal(5, result.Count);
+                Assert.True(result.Contains(null));
+            }
+        }
+
+        [ConditionalFact]
+        public virtual void Select_null_propagation_negative8()
+        {
+            using (var context = CreateContext())
+            {
+                var query = context.Tags
+                    .Select(t => t.Gear.Squad != null ? t.Gear.AssignedCity.Name : null)
+                    .ToList();
+
+                var result = query.ToList();
+
+                Assert.Equal(6, result.Count);
+                Assert.True(result.Contains(null));
+            }
+        }
+
+        [ConditionalFact]
+        public virtual void Select_null_propagation_works_for_navigations_with_composite_keys()
+        {
+            using (var context = CreateContext())
+            {
+                var query = from t in context.Tags
+                            select t.Gear != null ? t.Gear.Nickname : null;
+
+                var result = query.ToList();
+
+                Assert.Equal(6, result.Count);
+            }
+        }
+
+        [ConditionalFact]
+        public virtual void Select_null_propagation_works_for_multiple_navigations_with_composite_keys()
+        {
+            using (var context = CreateContext())
+            {
+                var query = from t in context.Tags
+                            select EF.Property<City>(EF.Property<CogTag>(t.Gear, "Tag").Gear, "AssignedCity") != null 
+                                ? EF.Property<string>(EF.Property<Gear>(t.Gear.Tag, "Gear").AssignedCity, "Name") 
+                                : null;
+
+                var result = query.ToList();
+
+                Assert.Equal(6, result.Count);
             }
         }
 

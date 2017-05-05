@@ -640,7 +640,7 @@ LEFT JOIN [Level2] AS [e.OneToOne_Optional_FK] ON [e].[Id] = [e.OneToOne_Optiona
             base.Select_nav_prop_reference_optional1_via_DefaultIfEmpty();
 
             AssertSql(
-                @"SELECT [l2].[Name], [l2].[Id]
+                @"SELECT [l2].[Name]
 FROM [Level1] AS [l1]
 LEFT JOIN [Level2] AS [l2] ON [l1].[Id] = [l2].[Level1_Optional_Id]");
         }
@@ -1581,10 +1581,7 @@ LEFT JOIN (
     FROM [Level1] AS [l10]
     LEFT JOIN [Level2] AS [l1.OneToOne_Required_FK] ON [l10].[Id] = [l1.OneToOne_Required_FK].[Level1_Required_Id]
     WHERE ([l10].[Name] <> N'L1 01') OR [l10].[Name] IS NULL
-) AS [t] ON [l1].[Id] = CASE
-    WHEN [t].[Id] IS NOT NULL
-    THEN [t].[Level1_Optional_Id] ELSE NULL
-END
+) AS [t] ON [l1].[Id] = [t].[Level1_Optional_Id]
 ORDER BY [l1].[Id]");
         }
 
