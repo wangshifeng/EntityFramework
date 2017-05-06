@@ -80,7 +80,7 @@ namespace Microsoft.EntityFrameworkCore.Query.Internal
             VisitQueryModel(queryModel);
 
             queryModel.TransformExpressions(_transformingExpressionVisitor.Visit);
-            queryModel.TransformExpressions(new ConditionalOptimizingExpressionVisitor(queryCompilationContext).Visit);
+            //queryModel.TransformExpressions(new ConditionalOptimizingExpressionVisitor(queryCompilationContext).Visit);
             queryModel.TransformExpressions(new EntityEqualityRewritingExpressionVisitor(queryCompilationContext).Visit);
             queryModel.TransformExpressions(new SubQueryMemberPushDownExpressionVisitor(queryCompilationContext).Visit);
         }
