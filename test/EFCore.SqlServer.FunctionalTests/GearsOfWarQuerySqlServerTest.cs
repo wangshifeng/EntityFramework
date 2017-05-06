@@ -1130,7 +1130,12 @@ ORDER BY [t].[Nickname]");
             base.Select_conditional_with_anonymous_type_true_and_null_false();
 
             AssertSql(
-                @"");
+                @"SELECT CASE
+    WHEN [g].[LeaderNickname] IS NOT NULL
+    THEN CAST(1 AS BIT) ELSE CAST(0 AS BIT)
+END, [g].[HasSoulPatch]
+FROM [Gear] AS [g]
+WHERE [g].[Discriminator] IN (N'Officer', N'Gear')");
         }
 
         public override void Select_null_propagation_works_for_navigations_with_composite_keys()

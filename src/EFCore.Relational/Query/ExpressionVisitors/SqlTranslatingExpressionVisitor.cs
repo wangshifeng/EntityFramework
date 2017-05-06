@@ -237,23 +237,14 @@ namespace Microsoft.EntityFrameworkCore.Query.ExpressionVisitors
             var ifTrue = Visit(expression.IfTrue);
             var ifFalse = Visit(expression.IfFalse);
 
-            //if (ifTrue.IsComparisonOperation()
-            //    && ifFalse)
-
             if (test != null
                 && ifTrue != null
                 && ifFalse != null)
             {
-                if (ifTrue.IsNullConstantExpression()
-                    && ifTrue.Type != ifFalse.Type)
+                if (ifTrue.IsNullConstantExpression() && ifFalse.Type == typeof(Expression[])
+                    || ifFalse.IsNullConstantExpression() && ifTrue.Type == typeof(Expression[]))
                 {
-                    ifTrue = Expression.Constant(null, ifFalse.Type);
-                }
-
-                if (ifFalse.IsNullConstantExpression()
-                    && ifFalse.Type != ifTrue.Type)
-                {
-                    ifFalse = Expression.Constant(null, ifTrue.Type);
+                    return null;
                 }
 
                 if (ifTrue.IsComparisonOperation()
@@ -264,9 +255,7 @@ namespace Microsoft.EntityFrameworkCore.Query.ExpressionVisitors
                         Expression.AndAlso(Invert(test), ifFalse));
                 }
 
-                return test != expression.Test || ifTrue != expression.IfTrue || ifFalse != expression.IfFalse
-                    ? Expression.Condition(test, ifTrue, ifFalse)
-                    : expression;
+                return expression.Update(test, ifTrue, ifFalse);
             }
 
             return null;
