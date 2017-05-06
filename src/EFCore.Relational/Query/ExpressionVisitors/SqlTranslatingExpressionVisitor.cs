@@ -241,6 +241,12 @@ namespace Microsoft.EntityFrameworkCore.Query.ExpressionVisitors
                 && ifTrue != null
                 && ifFalse != null)
             {
+                if (ifTrue.IsNullConstantExpression() && ifFalse.Type == typeof(Expression[])
+                    || ifFalse.IsNullConstantExpression() && ifTrue.Type == typeof(Expression[]))
+                {
+                    return null;
+                }
+
                 if (ifTrue.IsComparisonOperation()
                     || ifFalse.IsComparisonOperation())
                 {

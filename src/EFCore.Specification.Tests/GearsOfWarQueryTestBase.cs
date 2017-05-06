@@ -1182,6 +1182,25 @@ namespace Microsoft.EntityFrameworkCore.Specification.Tests
         }
 
         [ConditionalFact]
+        public virtual void Select_conditional_with_anonymous_type_true_and_null_false()
+        {
+            using (var context = CreateContext())
+            {
+                var query = from g in context.Gears
+                            orderby g.Nickname
+                            select g.LeaderNickname != null ? new { g.HasSoulPatch } : null;
+
+                var result = query.ToList();
+                Assert.Equal(5, result.Count);
+                Assert.True(result[0].HasSoulPatch);
+                Assert.False(result[1].HasSoulPatch);
+                Assert.False(result[2].HasSoulPatch);
+                Assert.Equal(null, result[3]);
+                Assert.False(result[4].HasSoulPatch);
+            }
+        }
+
+        [ConditionalFact]
         public virtual void Select_Where_Navigation()
         {
             using (var context = CreateContext())
