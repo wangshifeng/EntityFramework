@@ -1087,9 +1087,9 @@ CROSS JOIN [Gear] AS [g2]
 WHERE [g1].[Discriminator] IN (N'Officer', N'Gear')");
         }
 
-        public override void Select_conditional_with_anonymous_type_true_and_null_false()
+        public override void Select_conditional_with_anonymous_type_and_null_constant()
         {
-            base.Select_conditional_with_anonymous_type_true_and_null_false();
+            base.Select_conditional_with_anonymous_type_and_null_constant();
 
             AssertSql(
                 @"SELECT CASE
@@ -1099,6 +1099,53 @@ END, [g].[HasSoulPatch]
 FROM [Gear] AS [g]
 WHERE [g].[Discriminator] IN (N'Officer', N'Gear')
 ORDER BY [g].[Nickname]");
+        }
+
+        public override void Select_conditional_with_anonymous_types()
+        {
+            base.Select_conditional_with_anonymous_types();
+
+            AssertSql(
+                @"SELECT CASE
+    WHEN [g].[LeaderNickname] IS NOT NULL
+    THEN CAST(1 AS BIT) ELSE CAST(0 AS BIT)
+END, [g].[Nickname] AS [Name], [g].[FullName] AS [Name0]
+FROM [Gear] AS [g]
+WHERE [g].[Discriminator] IN (N'Officer', N'Gear')
+ORDER BY [Name]");
+
+        }
+
+        public override void Where_conditional_with_anonymous_type()
+        {
+            base.Where_conditional_with_anonymous_type();
+
+            AssertSql(
+                @"SELECT [g].[LeaderNickname], [g].[HasSoulPatch], [g].[Nickname]
+FROM [Gear] AS [g]
+WHERE [g].[Discriminator] IN (N'Officer', N'Gear')
+ORDER BY [g].[Nickname]");
+        }
+
+        public override void Select_coalesce_with_anonymous_types()
+        {
+            base.Select_coalesce_with_anonymous_types();
+
+            AssertSql(
+                @"SELECT [g].[LeaderNickname] AS [Name], [g].[FullName] AS [Name0]
+FROM [Gear] AS [g]
+WHERE [g].[Discriminator] IN (N'Officer', N'Gear')
+ORDER BY [g].[Nickname]");
+        }
+
+        public override void Where_coalesce_with_anonymous_types()
+        {
+            base.Where_coalesce_with_anonymous_types();
+
+            AssertSql(
+                @"SELECT [g].[LeaderNickname], [g].[FullName], [g].[Nickname]
+FROM [Gear] AS [g]
+WHERE [g].[Discriminator] IN (N'Officer', N'Gear')");
         }
 
         public override void Select_Where_Navigation_Scalar_Equals_Navigation_Scalar()
