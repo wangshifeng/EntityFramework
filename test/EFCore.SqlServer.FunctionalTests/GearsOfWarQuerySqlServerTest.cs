@@ -1087,6 +1087,60 @@ CROSS JOIN [Gear] AS [g2]
 WHERE [g1].[Discriminator] IN (N'Officer', N'Gear')");
         }
 
+        public override void Select_null_propagation_negative3()
+        {
+            base.Select_null_propagation_negative3();
+
+            AssertSql(
+                @"SELECT [t].[Nickname], CASE
+    WHEN [t].[Nickname] IS NOT NULL
+    THEN CASE
+        WHEN [t].[LeaderNickname] IS NOT NULL
+        THEN CAST(1 AS BIT) ELSE CAST(0 AS BIT)
+    END ELSE NULL
+END AS [Condition]
+FROM [Gear] AS [g1]
+LEFT JOIN (
+    SELECT [g2].*
+    FROM [Gear] AS [g2]
+    WHERE [g2].[Discriminator] IN (N'Officer', N'Gear')
+) AS [t] ON [g1].[HasSoulPatch] = 1
+WHERE [g1].[Discriminator] IN (N'Officer', N'Gear')
+ORDER BY [t].[Nickname]");
+        }
+
+        public override void Select_null_propagation_negative4()
+        {
+            base.Select_null_propagation_negative4();
+
+            AssertSql(
+                @"");
+        }
+
+        public override void Select_null_propagation_negative5()
+        {
+            base.Select_null_propagation_negative5();
+
+            AssertSql(
+                @"");
+        }
+
+        public override void Select_conditional_with_anonymous_type_true_and_null_false()
+        {
+            base.Select_conditional_with_anonymous_type_true_and_null_false();
+
+            AssertSql(
+                @"");
+        }
+
+        public override void Select_null_propagation_works_for_navigations_with_composite_keys()
+        {
+            base.Select_null_propagation_works_for_navigations_with_composite_keys();
+
+            AssertSql(
+                @"");
+        }
+
         public override void Select_Where_Navigation_Scalar_Equals_Navigation_Scalar()
         {
             base.Select_Where_Navigation_Scalar_Equals_Navigation_Scalar();

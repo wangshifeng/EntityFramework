@@ -1581,10 +1581,7 @@ LEFT JOIN (
     FROM [Level1] AS [l10]
     LEFT JOIN [Level2] AS [l1.OneToOne_Required_FK] ON [l10].[Id] = [l1.OneToOne_Required_FK].[Level1_Required_Id]
     WHERE ([l10].[Name] <> N'L1 01') OR [l10].[Name] IS NULL
-) AS [t] ON [l1].[Id] = CASE
-    WHEN [t].[Id] IS NOT NULL
-    THEN [t].[Level1_Optional_Id] ELSE NULL
-END
+) AS [t] ON [l1].[Id] = [t].[Level1_Optional_Id]
 ORDER BY [l1].[Id]");
         }
 

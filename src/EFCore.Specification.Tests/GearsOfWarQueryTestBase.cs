@@ -1182,6 +1182,87 @@ namespace Microsoft.EntityFrameworkCore.Specification.Tests
         }
 
         [ConditionalFact]
+        public virtual void Select_null_propagation_negative3()
+        {
+            using (var context = CreateContext())
+            {
+                var query = from g1 in context.Gears
+                            join g2 in context.Gears on g1.HasSoulPatch equals true into grouping
+                            from g2 in grouping.DefaultIfEmpty()
+                            orderby g2.Nickname
+                            select new { g2.Nickname, Condition = g2 != null ? (bool?)(g2.LeaderNickname != null) : (bool?)null };
+
+                var result = query.ToList();
+
+                Assert.Equal(13, result.Count);
+                Assert.Equal(null, result[0].Nickname);
+                Assert.Equal(null, result[0].Condition);
+
+                Assert.Equal("Baird", result[3].Nickname);
+                Assert.Equal(true, result[3].Condition);
+
+                Assert.Equal("Marcus", result[9].Nickname);
+                Assert.Equal(false, result[9].Condition);
+            }
+        }
+
+        [ConditionalFact]
+        public virtual void Select_null_propagation_negative4()
+        {
+            using (var context = CreateContext())
+            {
+                var query = from g1 in context.Gears
+                            join g2 in context.Gears on g1.HasSoulPatch equals true into grouping
+                            from g2 in grouping.DefaultIfEmpty()
+                            orderby g2.Nickname
+                            select g2 != null ? new Tuple<string, int>(g2.Nickname, 5) : null;
+
+                var result = query.ToList();
+            }
+        }
+
+        [ConditionalFact]
+        public virtual void Select_null_propagation_negative5()
+        {
+            using (var context = CreateContext())
+            {
+                var query = from g1 in context.Gears
+                            join g2 in context.Gears on g1.HasSoulPatch equals true into grouping
+                            from g2 in grouping.DefaultIfEmpty()
+                            orderby g2.Nickname
+                            select g2 != null ? new { g2.Nickname, Five = 5 } : null;
+
+                var result = query.ToList();
+            }
+        }
+
+        [ConditionalFact]
+        public virtual void Select_conditional_with_anonymous_type_true_and_null_false()
+        {
+            using (var context = CreateContext())
+            {
+                var query = from g in context.Gears
+                            select g.LeaderNickname != null ? new { g.HasSoulPatch } : null;
+
+                var result = query.ToList();
+            }
+        }
+
+        [ConditionalFact(Skip = "issue #8397")]
+        public virtual void Select_null_propagation_works_for_navigations_with_composite_keys()
+        {
+            using (var context = CreateContext())
+            {
+                var query = from t in context.Tags
+                            select t.Gear != null ? t.Gear.Nickname : null;
+
+                var result = query.ToList();
+
+                Assert.Equal(6, result.Count);
+            }
+        }
+
+        [ConditionalFact]
         public virtual void Select_Where_Navigation()
         {
             using (var context = CreateContext())

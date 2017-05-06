@@ -237,10 +237,25 @@ namespace Microsoft.EntityFrameworkCore.Query.ExpressionVisitors
             var ifTrue = Visit(expression.IfTrue);
             var ifFalse = Visit(expression.IfFalse);
 
+            //if (ifTrue.IsComparisonOperation()
+            //    && ifFalse)
+
             if (test != null
                 && ifTrue != null
                 && ifFalse != null)
             {
+                if (ifTrue.IsNullConstantExpression()
+                    && ifTrue.Type != ifFalse.Type)
+                {
+                    ifTrue = Expression.Constant(null, ifFalse.Type);
+                }
+
+                if (ifFalse.IsNullConstantExpression()
+                    && ifFalse.Type != ifTrue.Type)
+                {
+                    ifFalse = Expression.Constant(null, ifTrue.Type);
+                }
+
                 if (ifTrue.IsComparisonOperation()
                     || ifFalse.IsComparisonOperation())
                 {
@@ -249,7 +264,9 @@ namespace Microsoft.EntityFrameworkCore.Query.ExpressionVisitors
                         Expression.AndAlso(Invert(test), ifFalse));
                 }
 
-                return expression.Update(test, ifTrue, ifFalse);
+                return test != expression.Test || ifTrue != expression.IfTrue || ifFalse != expression.IfFalse
+                    ? Expression.Condition(test, ifTrue, ifFalse)
+                    : expression;
             }
 
             return null;
@@ -352,11 +369,25 @@ namespace Microsoft.EntityFrameworkCore.Query.ExpressionVisitors
             }
 
             public override Expression Visit(Expression node)
-                => _canRemoveNullCheck == false ? node : base.Visit(node);
+                => _canRemoveNullCheck == false
+                   || !(node is MemberExpression
+                        || node is QuerySourceReferenceExpression
+                        || node is MethodCallExpression
+                        || node is BinaryExpression
+                        || node is UnaryExpression
+                        || node is NullConditionalExpression)
+                    ? node
+                    : base.Visit(node);
 
             private void AnalyzeTestExpression(Expression expression)
             {
-                if (expression is QuerySourceReferenceExpression querySourceReferenceExpression)
+                var processedExpression = expression.RemoveConvert();
+                if (processedExpression is NullConditionalExpression nullConditionalExpression)
+                {
+                    processedExpression = nullConditionalExpression.AccessOperation.RemoveConvert();
+                }
+
+                if (processedExpression is QuerySourceReferenceExpression querySourceReferenceExpression)
                 {
                     _querySource = querySourceReferenceExpression.ReferencedQuerySource;
                     _propertyName = null;
@@ -364,18 +395,16 @@ namespace Microsoft.EntityFrameworkCore.Query.ExpressionVisitors
                     return;
                 }
 
-                var memberExpression = expression as MemberExpression;
-
-                if (memberExpression?.Expression is QuerySourceReferenceExpression querySourceInstance)
+                if (processedExpression is MemberExpression memberExpression
+                    && memberExpression.Expression is QuerySourceReferenceExpression querySourceInstance)
                 {
                     _querySource = querySourceInstance.ReferencedQuerySource;
-                    // ReSharper disable once PossibleNullReferenceException
                     _propertyName = memberExpression.Member.Name;
 
                     return;
                 }
 
-                if (expression is MethodCallExpression methodCallExpression
+                if (processedExpression is MethodCallExpression methodCallExpression
                     && methodCallExpression.Method.IsEFPropertyMethod())
                 {
                     if (methodCallExpression.Arguments[0] is QuerySourceReferenceExpression querySourceCaller)
@@ -437,6 +466,48 @@ namespace Microsoft.EntityFrameworkCore.Query.ExpressionVisitors
 
                 return base.VisitMethodCall(node);
             }
+
+            protected override Expression VisitUnary(UnaryExpression node)
+            {
+                if (node.NodeType == ExpressionType.Convert)
+                {
+                    return Visit(node.Operand);
+                }
+
+                _canRemoveNullCheck = false;
+
+                return node;
+            }
+
+            protected override Expression VisitBinary(BinaryExpression node)
+            {
+                // not safe to make the optimization due to null semantics
+                // e.g. a != null ? a.Name == null : null cant be translated to a.Name == null
+                // because even if value of 'a' is null, the result of the optimization would be 'true', not the expected 'null'
+                if ((node.NodeType == ExpressionType.Equal || node.NodeType == ExpressionType.NotEqual)
+                    && node.Left.Type.IsNullableType())
+                {
+                    _canRemoveNullCheck = false;
+
+                    return node;
+                }
+
+                return base.VisitBinary(node);
+            }
+
+            protected override Expression VisitExtension(Expression extensionExpression)
+            {
+                if (extensionExpression is NullConditionalExpression nullConditionalExpression)
+                {
+                    return Visit(nullConditionalExpression.AccessOperation);
+                }
+
+                _canRemoveNullCheck = false;
+
+                return extensionExpression;
+            }
+
+
         }
 
         private static Expression UnfoldStructuralComparison(ExpressionType expressionType, Expression expression)
