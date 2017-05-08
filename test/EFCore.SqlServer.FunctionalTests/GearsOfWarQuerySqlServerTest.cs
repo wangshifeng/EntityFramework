@@ -2770,8 +2770,7 @@ ORDER BY [f].[Name]");
             AssertSql(
                 @"SELECT [f].[Id], [f].[CapitalName], [f].[Discriminator], [f].[Name], [f].[CommanderName], [f].[Eradicated]
 FROM [Faction] AS [f]
-WHERE ([f].[Discriminator] = N'LocustHorde') AND ([f].[Discriminator] = N'LocustHorde')
-ORDER BY [f].[Name]");
+WHERE ([f].[Discriminator] = N'LocustHorde') AND ([f].[Discriminator] = N'LocustHorde')");
         }
 
         public override void Member_access_on_derived_entity_using_cast_and_let()
@@ -2781,8 +2780,7 @@ ORDER BY [f].[Name]");
             AssertSql(
                 @"SELECT [f].[Name], [f].[Eradicated]
 FROM [Faction] AS [f]
-WHERE ([f].[Discriminator] = N'LocustHorde') AND ([f].[Discriminator] = N'LocustHorde')
-ORDER BY [f].[Name]");
+WHERE ([f].[Discriminator] = N'LocustHorde') AND ([f].[Discriminator] = N'LocustHorde')");
         }
 
         public override void Property_access_on_derived_entity_using_cast()
@@ -2792,8 +2790,7 @@ ORDER BY [f].[Name]");
             AssertSql(
                 @"SELECT [f].[Name], [f].[Eradicated]
 FROM [Faction] AS [f]
-WHERE ([f].[Discriminator] = N'LocustHorde') AND ([f].[Discriminator] = N'LocustHorde')
-ORDER BY [f].[Name]");
+WHERE ([f].[Discriminator] = N'LocustHorde') AND ([f].[Discriminator] = N'LocustHorde')");
         }
 
         public override void Navigation_access_on_derived_entity_using_cast()
@@ -2808,8 +2805,7 @@ LEFT JOIN (
     FROM [LocustLeader] AS [f.Commander]
     WHERE [f.Commander].[Discriminator] = N'LocustCommander'
 ) AS [t] ON [f].[CommanderName] = [t].[Name]
-WHERE ([f].[Discriminator] = N'LocustHorde') AND ([f].[Discriminator] = N'LocustHorde')
-ORDER BY [f].[Name]");
+WHERE ([f].[Discriminator] = N'LocustHorde') AND ([f].[Discriminator] = N'LocustHorde')");
         }
 
         public override void Navigation_access_on_derived_materialized_entity_using_cast()
@@ -2824,8 +2820,7 @@ LEFT JOIN (
     FROM [LocustLeader] AS [f.Commander]
     WHERE [f.Commander].[Discriminator] = N'LocustCommander'
 ) AS [t] ON [f].[CommanderName] = [t].[Name]
-WHERE ([f].[Discriminator] = N'LocustHorde') AND ([f].[Discriminator] = N'LocustHorde')
-ORDER BY [f].[Name]");
+WHERE ([f].[Discriminator] = N'LocustHorde') AND ([f].[Discriminator] = N'LocustHorde')");
         }
 
         public override void Navigation_access_via_EFProperty_on_derived_entity_using_cast()
@@ -2840,8 +2835,7 @@ LEFT JOIN (
     FROM [LocustLeader] AS [f.Commander]
     WHERE [f.Commander].[Discriminator] = N'LocustCommander'
 ) AS [t] ON [f].[CommanderName] = [t].[Name]
-WHERE ([f].[Discriminator] = N'LocustHorde') AND ([f].[Discriminator] = N'LocustHorde')
-ORDER BY [f].[Name]");
+WHERE ([f].[Discriminator] = N'LocustHorde') AND ([f].[Discriminator] = N'LocustHorde')");
         }
 
         public override void Navigation_access_fk_on_derived_entity_using_cast()
@@ -2851,8 +2845,7 @@ ORDER BY [f].[Name]");
             AssertSql(
                 @"SELECT [f].[Name], [f].[CommanderName]
 FROM [Faction] AS [f]
-WHERE ([f].[Discriminator] = N'LocustHorde') AND ([f].[Discriminator] = N'LocustHorde')
-ORDER BY [f].[Name]");
+WHERE ([f].[Discriminator] = N'LocustHorde') AND ([f].[Discriminator] = N'LocustHorde')");
         }
 
         public override void Collection_navigation_access_on_derived_entity_using_cast()
@@ -2866,8 +2859,7 @@ ORDER BY [f].[Name]");
     WHERE [l].[Discriminator] IN (N'LocustCommander', N'LocustLeader') AND ([f].[Id] = [l].[LocustHordeId])
 ) AS [LeadersCount]
 FROM [Faction] AS [f]
-WHERE ([f].[Discriminator] = N'LocustHorde') AND ([f].[Discriminator] = N'LocustHorde')
-ORDER BY [f].[Name]");
+WHERE ([f].[Discriminator] = N'LocustHorde') AND ([f].[Discriminator] = N'LocustHorde')");
         }
 
         public override void Collection_navigation_access_on_derived_entity_using_cast_in_SelectMany()
@@ -2878,8 +2870,7 @@ ORDER BY [f].[Name]");
                 @"SELECT [f].[Name] AS [Name0], [f.Leaders].[Name] AS [LeaderName]
 FROM [Faction] AS [f]
 INNER JOIN [LocustLeader] AS [f.Leaders] ON [f].[Id] = [f.Leaders].[LocustHordeId]
-WHERE (([f].[Discriminator] = N'LocustHorde') AND ([f].[Discriminator] = N'LocustHorde')) AND [f.Leaders].[Discriminator] IN (N'LocustCommander', N'LocustLeader')
-ORDER BY [LeaderName]");
+WHERE (([f].[Discriminator] = N'LocustHorde') AND ([f].[Discriminator] = N'LocustHorde')) AND [f.Leaders].[Discriminator] IN (N'LocustCommander', N'LocustLeader')");
         }
 
         public override void Include_on_derived_entity_using_OfType()
@@ -3041,8 +3032,7 @@ WHERE [f].[Discriminator] = N'LocustHorde'");
                 @"SELECT [g1].[Nickname] AS [Nickname1], [g2].[Nickname] AS [Nickname2]
 FROM [Gear] AS [g1]
 CROSS JOIN [Gear] AS [g2]
-WHERE [g1].[Discriminator] IN (N'Officer', N'Gear') AND (([g1].[Nickname] = [g2].[Nickname]) AND ([g1].[SquadId] = [g2].[SquadId]))
-ORDER BY [Nickname1]");
+WHERE [g1].[Discriminator] IN (N'Officer', N'Gear') AND (([g1].[Nickname] = [g2].[Nickname]) AND ([g1].[SquadId] = [g2].[SquadId]))");
         }
 
         public override void Comparing_two_collection_navigations_inheritance()

@@ -985,14 +985,20 @@ namespace Microsoft.EntityFrameworkCore.Specification.Tests
         [ConditionalFact]
         public virtual void Select_ternary_operation_multiple_conditions()
         {
-            using (var context = CreateContext())
-            {
-                var cartridgeWeapons = context.Weapons
-                    .Select(w => new { w.Id, IsCartidge = w.AmmunitionType == AmmunitionType.Shell && w.SynergyWithId == 1 ? "Yes" : "No" })
-                    .ToList();
+            AssertQuery<Weapon>(
+                ws => ws.Select(w => new { w.Id, IsCartidge = w.AmmunitionType == AmmunitionType.Shell && w.SynergyWithId == 1 ? "Yes" : "No" }),
+                elementSorter: e => e.Id);
 
-                Assert.Equal(9, cartridgeWeapons.Count(w => w.IsCartidge == "No"));
-            }
+
+
+            //using (var context = CreateContext())
+            //{
+            //    var cartridgeWeapons = context.Weapons
+            //        .Select(w => new { w.Id, IsCartidge = w.AmmunitionType == AmmunitionType.Shell && w.SynergyWithId == 1 ? "Yes" : "No" })
+            //        .ToList();
+
+            //    Assert.Equal(9, cartridgeWeapons.Count(w => w.IsCartidge == "No"));
+            //}
         }
 
         [ConditionalFact]
@@ -2900,212 +2906,122 @@ namespace Microsoft.EntityFrameworkCore.Specification.Tests
         [ConditionalFact]
         public virtual void Member_access_on_derived_entity_using_cast()
         {
-            using (var ctx = CreateContext())
-            {
-                var query = from f in ctx.Factions
-                            where f is LocustHorde
-                            orderby ((LocustHorde)f).Name
-                            select new { ((LocustHorde)f).Name, ((LocustHorde)f).Eradicated };
-
-                var result = query.ToList();
-
-                Assert.Equal(2, result.Count);
-                Assert.Equal("Locust", result[0].Name);
-                Assert.Equal(true, result[0].Eradicated);
-                Assert.Equal("Swarm", result[1].Name);
-                Assert.Equal(false, result[1].Eradicated);
-            }
+            AssertQuery<Faction>(
+                fs => from f in fs
+                      where f is LocustHorde
+                      orderby ((LocustHorde)f).Name
+                      select new { ((LocustHorde)f).Name, ((LocustHorde)f).Eradicated }, 
+                verifyOrdered: true);
         }
 
         [ConditionalFact]
         public virtual void Member_access_on_derived_materialized_entity_using_cast()
         {
-            using (var ctx = CreateContext())
-            {
-                var query = from f in ctx.Factions
-                            where f is LocustHorde
-                            orderby f.Name
-                            select new { f, ((LocustHorde)f).Eradicated };
-
-                var result = query.ToList();
-
-                Assert.Equal(2, result.Count);
-                Assert.Equal("Locust", result[0].f.Name);
-                Assert.Equal(true, result[0].Eradicated);
-                Assert.Equal("Swarm", result[1].f.Name);
-                Assert.Equal(false, result[1].Eradicated);
-            }
+            AssertQuery<Faction>(
+                fs => from f in fs
+                      where f is LocustHorde
+                      select new { f, ((LocustHorde)f).Eradicated },
+                elementSorter: e => e.f.Name,
+                elementAsserter: (e, a) =>
+                {
+                    Assert.Equal(e.f.Id, a.f.Id);
+                    Assert.Equal(e.Eradicated, a.Eradicated);
+                });
         }
 
         [ConditionalFact]
         public virtual void Member_access_on_derived_entity_using_cast_and_let()
         {
-            using (var ctx = CreateContext())
-            {
-                var query = from f in ctx.Factions
-                            where f is LocustHorde
-                            let horde = (LocustHorde)f
-                            orderby horde.Name
-                            select new { horde.Name, horde.Eradicated };
-
-                var result = query.ToList();
-
-                Assert.Equal(2, result.Count);
-                Assert.Equal("Locust", result[0].Name);
-                Assert.Equal(true, result[0].Eradicated);
-                Assert.Equal("Swarm", result[1].Name);
-                Assert.Equal(false, result[1].Eradicated);
-            }
+            AssertQuery<Faction>(
+                fs => from f in fs
+                      where f is LocustHorde
+                      let horde = (LocustHorde)f
+                      select new { horde.Name, horde.Eradicated },
+                elementSorter: e => e.Name);
         }
 
         [ConditionalFact]
         public virtual void Property_access_on_derived_entity_using_cast()
         {
-            using (var ctx = CreateContext())
-            {
-                var query = from f in ctx.Factions
-                            where f is LocustHorde
-                            let horde = (LocustHorde)f
-                            orderby f.Name
-                            select new { Name = EF.Property<string>(horde, "Name"), Eradicated = EF.Property<bool>((LocustHorde)f, "Eradicated") };
-
-                var result = query.ToList();
-
-                Assert.Equal(2, result.Count);
-                Assert.Equal("Locust", result[0].Name);
-                Assert.Equal(true, result[0].Eradicated);
-                Assert.Equal("Swarm", result[1].Name);
-                Assert.Equal(false, result[1].Eradicated);
-            }
+            AssertQuery<Faction>(
+                fs => from f in fs
+                      where f is LocustHorde
+                      let horde = (LocustHorde)f
+                      select new { Name = EF.Property<string>(horde, "Name"), Eradicated = EF.Property<bool?>((LocustHorde)f, "Eradicated") },
+                fs => from f in fs
+                      where f is LocustHorde
+                      let horde = (LocustHorde)f
+                      select new { horde.Name, ((LocustHorde)f).Eradicated },
+                elementSorter: e => e.Name);
         }
 
         [ConditionalFact]
         public virtual void Navigation_access_on_derived_entity_using_cast()
         {
-            using (var ctx = CreateContext())
-            {
-                var query = from f in ctx.Factions
-                            where f is LocustHorde
-                            orderby f.Name
-                            select new { f.Name, Threat = ((LocustHorde)f).Commander.ThreatLevel };
-
-                var result = query.ToList();
-
-                Assert.Equal(2, result.Count);
-                Assert.Equal("Locust", result[0].Name);
-                Assert.Equal(5, result[0].Threat);
-                Assert.Equal("Swarm", result[1].Name);
-                Assert.Equal(0, result[1].Threat);
-            }
+            AssertQuery<Faction>(
+                fs => from f in fs
+                      where f is LocustHorde
+                      select new { f.Name, Threat = ((LocustHorde)f).Commander.ThreatLevel },
+                elementSorter: e => e.Name);
         }
 
         [ConditionalFact]
         public virtual void Navigation_access_on_derived_materialized_entity_using_cast()
         {
-            using (var ctx = CreateContext())
-            {
-                var query = from f in ctx.Factions
-                            where f is LocustHorde
-                            orderby f.Name
-                            select new { f, f.Name, Threat = ((LocustHorde)f).Commander.ThreatLevel };
-
-                var result = query.ToList();
-
-                Assert.Equal(2, result.Count);
-                Assert.Equal("Locust", result[0].Name);
-                Assert.Equal("Locust", result[0].f.Name);
-                Assert.Equal(5, result[0].Threat);
-                Assert.Equal("Swarm", result[1].Name);
-                Assert.Equal("Swarm", result[1].f.Name);
-                Assert.Equal(0, result[1].Threat);
-            }
+            AssertQuery<Faction>(
+                fs => from f in fs
+                      where f is LocustHorde
+                      select new { f, f.Name, Threat = ((LocustHorde)f).Commander.ThreatLevel },
+                elementSorter: e => e.Name,
+                elementAsserter: (e, a) => 
+                {
+                    Assert.Equal(e.f.Id, a.f.Id);
+                    Assert.Equal(e.Name, a.Name);
+                    Assert.Equal(e.Threat, a.Threat);
+                });
         }
-
 
         [ConditionalFact]
         public virtual void Navigation_access_via_EFProperty_on_derived_entity_using_cast()
         {
-            using (var ctx = CreateContext())
-            {
-                var query = from f in ctx.Factions
-                            where f is LocustHorde
-                            orderby f.Name
-                            select new { f.Name, Threat = EF.Property<LocustCommander>((LocustHorde)f, "Commander").ThreatLevel };
-
-                var result = query.ToList();
-
-                Assert.Equal(2, result.Count);
-                Assert.Equal("Locust", result[0].Name);
-                Assert.Equal(5, result[0].Threat);
-                Assert.Equal("Swarm", result[1].Name);
-                Assert.Equal(0, result[1].Threat);
-            }
+            AssertQuery<Faction>(
+                fs => from f in fs
+                      where f is LocustHorde
+                      select new { f.Name, Threat = EF.Property<LocustCommander>((LocustHorde)f, "Commander").ThreatLevel },
+                fs => from f in fs
+                      where f is LocustHorde
+                      select new { f.Name, Threat = ((LocustHorde)f).Commander.ThreatLevel },
+                elementSorter: e => e.Name);
         }
 
         [ConditionalFact]
         public virtual void Navigation_access_fk_on_derived_entity_using_cast()
         {
-            using (var ctx = CreateContext())
-            {
-                var query = from f in ctx.Factions
-                            where f is LocustHorde
-                            orderby f.Name
-                            select new { f.Name, CommanderName = ((LocustHorde)f).Commander.Name };
-
-                var result = query.ToList();
-
-                Assert.Equal(2, result.Count);
-                Assert.Equal("Locust", result[0].Name);
-                Assert.Equal("Queen Myrrah", result[0].CommanderName);
-                Assert.Equal("Swarm", result[1].Name);
-                Assert.Equal("Unknown", result[1].CommanderName);
-            }
+            AssertQuery<Faction>(
+                fs => from f in fs
+                      where f is LocustHorde
+                      select new { f.Name, CommanderName = ((LocustHorde)f).Commander.Name },
+                elementSorter: e => e.Name);
         }
 
         [ConditionalFact]
         public virtual void Collection_navigation_access_on_derived_entity_using_cast()
         {
-            using (var ctx = CreateContext())
-            {
-                var query = from f in ctx.Factions
-                            where f is LocustHorde
-                            orderby f.Name
-                            select new { f.Name, LeadersCount = ((LocustHorde)f).Leaders.Count };
-
-                var result = query.ToList();
-
-                Assert.Equal(2, result.Count);
-                Assert.Equal("Locust", result[0].Name);
-                Assert.Equal(4, result[0].LeadersCount);
-                Assert.Equal("Swarm", result[1].Name);
-                Assert.Equal(1, result[1].LeadersCount);
-            }
+            AssertQuery<Faction>(
+                fs => from f in fs
+                      where f is LocustHorde
+                      select new { f.Name, LeadersCount = ((LocustHorde)f).Leaders.Count },
+                elementSorter: e => e.Name);
         }
 
         [ConditionalFact]
         public virtual void Collection_navigation_access_on_derived_entity_using_cast_in_SelectMany()
         {
-            using (var ctx = CreateContext())
-            {
-                var query = from f in ctx.Factions.Where(f => f is LocustHorde)
-                            from l in ((LocustHorde)f).Leaders
-                            orderby l.Name
-                            select new { f.Name, LeaderName = l.Name };
-
-                var result = query.ToList();
-
-                Assert.Equal(5, result.Count);
-                Assert.Equal("Locust", result[0].Name);
-                Assert.Equal("Locust", result[1].Name);
-                Assert.Equal("Locust", result[2].Name);
-                Assert.Equal("Locust", result[3].Name);
-                Assert.Equal("Swarm", result[4].Name);
-                Assert.Equal("General Karn", result[0].LeaderName);
-                Assert.Equal("General RAAM", result[1].LeaderName);
-                Assert.Equal("High Priest Skorge", result[2].LeaderName);
-                Assert.Equal("Queen Myrrah", result[3].LeaderName);
-                Assert.Equal("The Speaker", result[4].LeaderName);
-            }
+            AssertQuery<Faction>(
+                fs => from f in fs.Where(f => f is LocustHorde)
+                      from l in ((LocustHorde)f).Leaders
+                      select new { f.Name, LeaderName = l.Name },
+                elementSorter: e => e.LeaderName);
         }
 
         [ConditionalFact]
@@ -3197,64 +3113,56 @@ namespace Microsoft.EntityFrameworkCore.Specification.Tests
         [ConditionalFact]
         public virtual void Distinct_on_subquery_doesnt_get_lifted()
         {
-            using (var ctx = CreateContext())
-            {
-                var query = from g in (from ig in ctx.Gears
-                                       select ig).Distinct()
-                            select g.HasSoulPatch;
-
-                var result = query.ToList();
-                Assert.Equal(5, result.Count);
-            }
+            AssertQueryScalar<Gear, bool>(
+                gs => from g in (from ig in gs
+                                 select ig).Distinct()
+                      select g.HasSoulPatch);
         }
 
         [ConditionalFact]
         public virtual void Cast_result_operator_on_subquery_is_properly_lifted_to_a_convert()
         {
-            using (var ctx = CreateContext())
-            {
-                var query = from lh in (from f in ctx.Factions
-                                        select f).Cast<LocustHorde>()
-                            select lh.Eradicated;
-
-                var result = query.ToList();
-                Assert.Equal(2, result.Count);
-            }
+            AssertQueryNullableScalar<Faction, bool>(
+                fs => from lh in (from f in fs
+                                  select f).Cast<LocustHorde>()
+                      select lh.Eradicated);
         }
 
         [ConditionalFact]
         public virtual void Comparing_two_collection_navigations_composite_key()
         {
-            using (var ctx = CreateContext())
-            {
-                var query = from g1 in ctx.Gears
-                            from g2 in ctx.Gears
-                            where g1.Weapons == g2.Weapons
-                            orderby g1.Nickname
-                            select new { Nickname1 = g1.Nickname, Nickname2 = g2.Nickname };
-
-                var result = query.ToList();
-                Assert.Equal(5, result.Count);
-                Assert.Equal(5, result.Count(r => r.Nickname1 == r.Nickname2));
-            }
+            AssertQuery<Gear>(
+                gs => from g1 in gs
+                      from g2 in gs
+                      where g1.Weapons == g2.Weapons
+                      select new { Nickname1 = g1.Nickname, Nickname2 = g2.Nickname },
+                gs => from g1 in gs
+                      from g2 in gs
+                      where g1.Nickname == g2.Nickname
+                      select new { Nickname1 = g1.Nickname, Nickname2 = g2.Nickname },
+                elementSorter: e => e.Nickname1);
         }
 
         [ConditionalFact]
         public virtual void Comparing_two_collection_navigations_inheritance()
         {
-            using (var ctx = CreateContext())
-            {
-                var query = from f in ctx.Factions
-                            from o in ctx.Gears.OfType<Officer>()
-                            where f is LocustHorde && o.HasSoulPatch
-                            where ((LocustHorde)f).Commander.DefeatedBy.Weapons == o.Weapons
-                            select new { f.Name, o.Nickname };
-
-                var result = query.ToList();
-                Assert.Equal(1, result.Count);
-                Assert.Equal("Locust", result[0].Name);
-                Assert.Equal("Marcus", result[0].Nickname);
-            }
+            AssertQuery<Faction, Gear>(
+                (fs, gs) =>
+                    from f in fs
+                    from o in gs.OfType<Officer>()
+                    where f is LocustHorde && o.HasSoulPatch
+                    where ((LocustHorde)f).Commander.DefeatedBy.Weapons == o.Weapons
+                    select new { f.Name, o.Nickname },
+                (fs, gs) =>
+                    from f in fs
+                    from o in gs.OfType<Officer>()
+                    where f is LocustHorde && o.HasSoulPatch
+                    where Maybe(
+                        ((LocustHorde)f).Commander, 
+                        () => Maybe(
+                            ((LocustHorde)f).Commander.DefeatedBy,
+                            () => ((LocustHorde)f).Commander.DefeatedBy.Nickname)) == o.Nickname
+                    select new { f.Name, o.Nickname });
         }
 
         [ConditionalFact(Skip = "issue #8375")]
@@ -3276,6 +3184,301 @@ namespace Microsoft.EntityFrameworkCore.Specification.Tests
                 Assert.Equal("Marcus", result[1].Nickname2);
             }
         }
+
+
+
+
+
+
+
+
+
+        private static TResult Maybe<TResult>(object caller, Func<TResult> expression) where TResult : class
+        {
+            if (caller == null)
+            {
+                return null;
+            }
+
+            return expression();
+        }
+
+        private static TResult? MaybeScalar<TResult>(object caller, Func<TResult?> expression) where TResult : struct
+        {
+            if (caller == null)
+            {
+                return null;
+            }
+
+            return expression();
+        }
+
+
+
+        #region AssertQuery
+
+        private void AssertQuery<TItem1>(
+            Func<IQueryable<TItem1>, IQueryable<object>> query,
+            Func<dynamic, object> elementSorter = null,
+            Action<dynamic, dynamic> elementAsserter = null,
+            bool verifyOrdered = false)
+            where TItem1 : class
+            => AssertQuery(query, query, elementSorter, elementAsserter, verifyOrdered);
+
+        private void AssertQuery<TItem1>(
+            Func<IQueryable<TItem1>, IQueryable<object>> efQuery,
+            Func<IQueryable<TItem1>, IQueryable<object>> l2oQuery,
+            Func<dynamic, object> elementSorter = null,
+            Action<dynamic, dynamic> elementAsserter = null,
+            bool verifyOrdered = false)
+            where TItem1 : class
+        {
+            using (var context = CreateContext())
+            {
+                var actual = efQuery(context.Set<TItem1>()).ToArray();
+                var expected = l2oQuery(GearsOfWarData.Set<TItem1>()).ToArray();
+                TestHelpers.AssertResults(
+                    expected,
+                    actual,
+                    elementSorter ?? (e => e),
+                    elementAsserter ?? ((e, a) => Assert.Equal(e, a)),
+                    verifyOrdered);
+            }
+        }
+
+        private void AssertQuery<TItem1, TItem2>(
+            Func<IQueryable<TItem1>, IQueryable<TItem2>, IQueryable<object>> query,
+            Func<dynamic, object> elementSorter = null,
+            Action<dynamic, dynamic> elementAsserter = null,
+            bool verifyOrdered = false)
+            where TItem1 : class
+            where TItem2 : class
+            => AssertQuery(query, query, elementSorter, elementAsserter, verifyOrdered);
+
+        private void AssertQuery<TItem1, TItem2>(
+            Func<IQueryable<TItem1>, IQueryable<TItem2>, IQueryable<object>> efQuery,
+            Func<IQueryable<TItem1>, IQueryable<TItem2>, IQueryable<object>> l2oQuery,
+            Func<dynamic, object> elementSorter = null,
+            Action<dynamic, dynamic> elementAsserter = null,
+            bool verifyOrdered = false)
+            where TItem1 : class
+            where TItem2 : class
+        {
+            using (var context = CreateContext())
+            {
+                var actual = efQuery(context.Set<TItem1>(), context.Set<TItem2>()).ToArray();
+                var expected = l2oQuery(GearsOfWarData.Set<TItem1>(), GearsOfWarData.Set<TItem2>()).ToArray();
+                TestHelpers.AssertResults(
+                    expected,
+                    actual,
+                    elementSorter ?? (e => e),
+                    elementAsserter ?? ((e, a) => Assert.Equal(e, a)),
+                    verifyOrdered);
+            }
+        }
+
+        private void AssertQuery<TItem1, TItem2, TItem3>(
+            Func<IQueryable<TItem1>, IQueryable<TItem2>, IQueryable<TItem3>, IQueryable<object>> query,
+            Func<dynamic, object> elementSorter = null,
+            Action<dynamic, dynamic> elementAsserter = null,
+            bool verifyOrdered = false)
+            where TItem1 : class
+            where TItem2 : class
+            where TItem3 : class
+            => AssertQuery(query, query, elementSorter, elementAsserter, verifyOrdered);
+
+        private void AssertQuery<TItem1, TItem2, TItem3>(
+            Func<IQueryable<TItem1>, IQueryable<TItem2>, IQueryable<TItem3>, IQueryable<object>> efQuery,
+            Func<IQueryable<TItem1>, IQueryable<TItem2>, IQueryable<TItem3>, IQueryable<object>> l2oQuery,
+            Func<dynamic, object> elementSorter = null,
+            Action<dynamic, dynamic> elementAsserter = null,
+            bool verifyOrdered = false)
+            where TItem1 : class
+            where TItem2 : class
+            where TItem3 : class
+        {
+            using (var context = CreateContext())
+            {
+                var actual = efQuery(context.Set<TItem1>(), context.Set<TItem2>(), context.Set<TItem3>()).ToArray();
+                var expected = l2oQuery(GearsOfWarData.Set<TItem1>(), GearsOfWarData.Set<TItem2>(), GearsOfWarData.Set<TItem3>()).ToArray();
+                TestHelpers.AssertResults(
+                    expected,
+                    actual,
+                    elementSorter ?? (e => e),
+                    elementAsserter ?? ((e, a) => Assert.Equal(e, a)),
+                    verifyOrdered);
+            }
+        }
+
+        #endregion
+
+        #region AssertQueryScalar
+
+        private void AssertQueryScalar<TItem1, TResult>(
+            Func<IQueryable<TItem1>, IQueryable<TResult>> query,
+            bool verifyOrdered = false)
+            where TItem1 : class
+            where TResult : struct
+            => AssertQueryScalar(query, query, verifyOrdered);
+
+        private void AssertQueryScalar<TItem1, TResult>(
+            Func<IQueryable<TItem1>, IQueryable<TResult>> efQuery,
+            Func<IQueryable<TItem1>, IQueryable<TResult>> l2oQuery,
+            bool verifyOrdered = false)
+            where TItem1 : class
+            where TResult : struct
+        {
+            using (var context = CreateContext())
+            {
+                var actual = efQuery(context.Set<TItem1>()).ToArray();
+                var expected = l2oQuery(GearsOfWarData.Set<TItem1>()).ToArray();
+                TestHelpers.AssertResults(
+                    expected,
+                    actual,
+                    e => e,
+                    Assert.Equal,
+                    verifyOrdered);
+            }
+        }
+
+        private void AssertQueryScalar<TItem1, TItem2, TResult>(
+            Func<IQueryable<TItem1>, IQueryable<TItem2>, IQueryable<TResult>> query,
+            bool verifyOrdered = false)
+            where TItem1 : class
+            where TItem2 : class
+            where TResult : struct
+            => AssertQueryScalar(query, query, verifyOrdered);
+
+        private void AssertQueryScalar<TItem1, TItem2, TResult>(
+            Func<IQueryable<TItem1>, IQueryable<TItem2>, IQueryable<TResult>> efQuery,
+            Func<IQueryable<TItem1>, IQueryable<TItem2>, IQueryable<TResult>> l2oQuery,
+            bool verifyOrdered = false)
+            where TItem1 : class
+            where TItem2 : class
+            where TResult : struct
+        {
+            using (var context = CreateContext())
+            {
+                var actual = efQuery(context.Set<TItem1>(), context.Set<TItem2>()).ToArray();
+                var expected = l2oQuery(GearsOfWarData.Set<TItem1>(), GearsOfWarData.Set<TItem2>()).ToArray();
+                TestHelpers.AssertResults(
+                    expected,
+                    actual,
+                    e => e,
+                    Assert.Equal,
+                    verifyOrdered);
+            }
+        }
+
+        private void AssertQueryScalar<TItem1, TItem2, TItem3, TResult>(
+            Func<IQueryable<TItem1>, IQueryable<TItem2>, IQueryable<TItem3>, IQueryable<TResult>> query,
+            bool verifyOrdered = false)
+            where TItem1 : class
+            where TItem2 : class
+            where TItem3 : class
+            where TResult : struct
+        {
+            using (var context = CreateContext())
+            {
+                var actual = query(context.Set<TItem1>(), context.Set<TItem2>(), context.Set<TItem3>()).ToArray();
+                var expected = query(GearsOfWarData.Set<TItem1>(), GearsOfWarData.Set<TItem2>(), GearsOfWarData.Set<TItem3>()).ToArray();
+                TestHelpers.AssertResults(
+                    expected,
+                    actual,
+                    e => e,
+                    Assert.Equal,
+                    verifyOrdered);
+            }
+        }
+
+        private void AssertQueryScalar<TItem1, TItem2, TItem3, TResult>(
+            Func<IQueryable<TItem1>, IQueryable<TItem2>, IQueryable<TItem3>, IQueryable<TResult>> efQuery,
+            Func<IQueryable<TItem1>, IQueryable<TItem2>, IQueryable<TItem3>, IQueryable<TResult>> l2oQuery,
+            bool verifyOrdered = false)
+            where TItem1 : class
+            where TItem2 : class
+            where TItem3 : class
+            where TResult : struct
+        {
+            using (var context = CreateContext())
+            {
+                var actual = efQuery(context.Set<TItem1>(), context.Set<TItem2>(), context.Set<TItem3>()).ToArray();
+                var expected = l2oQuery(GearsOfWarData.Set<TItem1>(), GearsOfWarData.Set<TItem2>(), GearsOfWarData.Set<TItem3>()).ToArray();
+                TestHelpers.AssertResults(
+                    expected,
+                    actual,
+                    e => e,
+                    Assert.Equal,
+                    verifyOrdered);
+            }
+        }
+
+        #endregion
+
+        #region AssertQueryNullableScalar
+
+        private void AssertQueryNullableScalar<TItem1, TResult>(
+            Func<IQueryable<TItem1>, IQueryable<TResult?>> query,
+            bool verifyOrdered = false)
+            where TItem1 : class
+            where TResult : struct
+            => AssertQueryNullableScalar(query, query, verifyOrdered);
+
+        private void AssertQueryNullableScalar<TItem1, TResult>(
+            Func<IQueryable<TItem1>, IQueryable<TResult?>> efQuery,
+            Func<IQueryable<TItem1>, IQueryable<TResult?>> l2oQuery,
+            bool verifyOrdered = false)
+            where TItem1 : class
+            where TResult : struct
+        {
+            using (var context = CreateContext())
+            {
+                var actual = efQuery(context.Set<TItem1>()).ToArray();
+                var expected = l2oQuery(GearsOfWarData.Set<TItem1>()).ToArray();
+                TestHelpers.AssertResultsNullable(
+                    expected,
+                    actual,
+                    e => e,
+                    Assert.Equal,
+                    verifyOrdered);
+            }
+        }
+
+        private void AssertQueryNullableScalar<TItem1, TItem2, TResult>(
+            Func<IQueryable<TItem1>, IQueryable<TItem2>, IQueryable<TResult?>> query,
+            bool verifyOrdered = false)
+            where TItem1 : class
+            where TItem2 : class
+            where TResult : struct
+            => AssertQueryNullableScalar(query, query, verifyOrdered);
+
+        private void AssertQueryNullableScalar<TItem1, TItem2, TResult>(
+            Func<IQueryable<TItem1>, IQueryable<TItem2>, IQueryable<TResult?>> efQuery,
+            Func<IQueryable<TItem1>, IQueryable<TItem2>, IQueryable<TResult?>> l2oQuery,
+            bool verifyOrdered = false)
+            where TItem1 : class
+            where TItem2 : class
+            where TResult : struct
+        {
+            using (var context = CreateContext())
+            {
+                var actual = efQuery(context.Set<TItem1>(), context.Set<TItem2>()).ToArray();
+                var expected = l2oQuery(GearsOfWarData.Set<TItem1>(), GearsOfWarData.Set<TItem2>()).ToArray();
+                TestHelpers.AssertResultsNullable(
+                    expected,
+                    actual,
+                    e => e,
+                    Assert.Equal,
+                    verifyOrdered);
+            }
+        }
+
+        #endregion
+
+
+
+
+
 
         protected GearsOfWarContext CreateContext() => Fixture.CreateContext(TestStore);
 

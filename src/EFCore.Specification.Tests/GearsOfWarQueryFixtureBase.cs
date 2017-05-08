@@ -30,6 +30,7 @@ namespace Microsoft.EntityFrameworkCore.Specification.Tests
             modelBuilder.Entity<Squad>(b =>
                 {
                     b.HasKey(s => s.Id);
+                    b.Property(s => s.Id).ValueGeneratedNever();
                     b.HasMany(s => s.Members).WithOne(g => g.Squad).HasForeignKey(g => g.SquadId);
                 });
 
@@ -40,6 +41,8 @@ namespace Microsoft.EntityFrameworkCore.Specification.Tests
                     b.HasOne(w => w.Owner).WithMany(g => g.Weapons).HasForeignKey(w => w.OwnerFullName).HasPrincipalKey(g => g.FullName);
                 });
 
+            modelBuilder.Entity<Mission>().Property(m => m.Id).ValueGeneratedNever();
+
             modelBuilder.Entity<SquadMission>(b =>
                 {
                     b.HasKey(sm => new { sm.SquadId, sm.MissionId });
@@ -47,7 +50,8 @@ namespace Microsoft.EntityFrameworkCore.Specification.Tests
                     b.HasOne(sm => sm.Squad).WithMany(s => s.Missions).HasForeignKey(sm => sm.SquadId);
                 });
 
-            modelBuilder.Entity<Faction>().HasKey(f => f.Id);
+            modelBuilder.Entity<Faction>().Property(f => f.Id).ValueGeneratedNever();
+
             modelBuilder.Entity<LocustHorde>().HasBaseType<Faction>();
             modelBuilder.Entity<LocustHorde>().HasMany(h => h.Leaders).WithOne();
             modelBuilder.Entity<LocustHorde>().HasOne(h => h.Commander).WithOne(c => c.CommandingFaction);
