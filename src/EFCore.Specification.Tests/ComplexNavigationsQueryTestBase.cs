@@ -3138,8 +3138,8 @@ namespace Microsoft.EntityFrameworkCore.Specification.Tests
         {
             using (var context = CreateContext())
             {
-                var actual = l2oQuery(ExpectedSet<TItem1>());
-                var expected = efQuery(Set<TItem1>(context));
+                var actual = efQuery(Set<TItem1>(context));
+                var expected = l2oQuery(ExpectedSet<TItem1>());
 
                 Assert.Equal(expected, actual);
             }
@@ -3159,8 +3159,8 @@ namespace Microsoft.EntityFrameworkCore.Specification.Tests
         {
             using (var context = CreateContext())
             {
-                var actual = l2oQuery(ExpectedSet<TItem1>(), ExpectedSet<TItem2>());
-                var expected = efQuery(Set<TItem1>(context), Set<TItem2>(context));
+                var actual = efQuery(Set<TItem1>(context), Set<TItem2>(context));
+                var expected = l2oQuery(ExpectedSet<TItem1>(), ExpectedSet<TItem2>());
 
                 Assert.Equal(expected, actual);
             }

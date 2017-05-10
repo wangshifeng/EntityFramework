@@ -2244,32 +2244,24 @@ namespace Microsoft.EntityFrameworkCore.Specification.Tests
         [ConditionalFact]
         public virtual void DateTimeOffset_Datepart_works()
         {
-            using (var context = CreateContext())
-            {
-                var query = from m in context.Missions
-                            where m.Timeline.Month == 5
-                            select m;
-
-                var result = query.ToList();
-
-                Assert.Equal(1, result.Count);
-            }
+            AssertQuery<Mission>(
+                ms => from m in ms
+                      where m.Timeline.Month == 5
+                      select m,
+                elementSorter: e => e.Id,
+                elementAsserter: (e, a) => Assert.Equal(e.Id, a.Id));
         }
 
         [ConditionalFact]
         public virtual void Orderby_added_for_client_side_GroupJoin_composite_dependent_to_principal_LOJ_when_incomplete_key_is_used()
         {
-            using (var ctx = CreateContext())
-            {
-                var query = from t in ctx.Tags
-                            join g in ctx.Gears on t.GearNickName equals g.Nickname into grouping
-                            from g in ClientDefaultIfEmpty(grouping)
-                            select new { Note = t.Note, Nickname = (g != null ? g.Nickname : null) };
-
-                var result = query.ToList();
-
-                Assert.Equal(6, result.Count);
-            }
+            AssertQuery<CogTag, Gear>(
+                (ts, gs) =>
+                    from t in ts
+                    join g in gs on t.GearNickName equals g.Nickname into grouping
+                    from g in ClientDefaultIfEmpty(grouping)
+                    select new { t.Note, Nickname = g != null ? g.Nickname : null },
+                elementSorter: e => e.Note);
         }
 
         private static IEnumerable<TElement> ClientDefaultIfEmpty<TElement>(IEnumerable<TElement> source)
@@ -2280,169 +2272,128 @@ namespace Microsoft.EntityFrameworkCore.Specification.Tests
         [ConditionalFact]
         public virtual void Complex_predicate_with_AndAlso_and_nullable_bool_property()
         {
-            using (var context = CreateContext())
-            {
-                var query = from w in context.Weapons
-                            where w.Id != 50 && !w.Owner.HasSoulPatch
-                            select w;
-
-                var result = query.ToList();
-
-                Assert.Equal(5, result.Count);
-            }
+            AssertQuery<Weapon>(
+                ws => from w in ws
+                      where w.Id != 50 && !w.Owner.HasSoulPatch
+                      select w,
+                ws => from w in ws
+                      where w.Id != 50 && MaybeScalar<bool>(w.Owner, () => w.Owner.HasSoulPatch) == false
+                      select w,
+                elementSorter: e => e.Id,
+                elementAsserter: (e, a) => Assert.Equal(e.Id, a.Id));
         }
 
         [ConditionalFact]
         public virtual void Distinct_with_optional_navigation_is_translated_to_sql()
         {
-            using (var context = CreateContext())
-            {
-                var query = (from g in context.Gears
-                             where g.Tag.Note != "Foo"
-                             select g.HasSoulPatch).Distinct();
-
-                var result = query.ToList();
-                Assert.Equal(2, result.Count);
-            }
+            AssertQueryScalar<Gear, bool>(
+                gs => (from g in gs
+                       where g.Tag.Note != "Foo"
+                       select g.HasSoulPatch).Distinct(),
+                gs => (from g in gs
+                       where Maybe(g.Tag, () => g.Tag.Note) != "Foo"
+                       select g.HasSoulPatch).Distinct());
         }
 
         [ConditionalFact]
         public virtual void Sum_with_optional_navigation_is_translated_to_sql()
         {
-            using (var context = CreateContext())
-            {
-                var expected = (from g in context.Gears.ToList()
-                                select g.SquadId).Sum();
-
-                ClearLog();
-
-                var actual = (from g in context.Gears
-                             where g.Tag.Note != "Foo"
-                             select g.SquadId).Sum();
-
-                Assert.Equal(expected, actual);
-            }
+            AssertSingleResult<Gear, int>(
+                gs => (from g in gs
+                       where g.Tag.Note != "Foo"
+                       select g.SquadId).Sum(),
+                gs => (from g in gs
+                       where Maybe(g.Tag, () => g.Tag.Note) != "Foo"
+                       select g.SquadId).Sum());
         }
 
         [ConditionalFact]
         public virtual void Count_with_optional_navigation_is_translated_to_sql()
         {
-            using (var context = CreateContext())
-            {
-                var query = (from g in context.Gears
-                             where g.Tag.Note != "Foo"
-                             select g.HasSoulPatch).Count();
-
-                Assert.Equal(5, query);
-            }
+            AssertSingleResult<Gear, int>(
+                gs => (from g in gs
+                       where g.Tag.Note != "Foo"
+                       select g.HasSoulPatch).Count(),
+                gs => (from g in gs
+                       where Maybe(g.Tag, () => g.Tag.Note) != "Foo"
+                       select g.HasSoulPatch).Count());
         }
 
         [ConditionalFact]
         public virtual void Distinct_with_unflattened_groupjoin_is_evaluated_on_client()
         {
-            using (var context = CreateContext())
-            {
-                var query = context.Gears.GroupJoin(
-                    context.Tags,
-                    g => new { k1 = g.Nickname, k2 = (int?)g.SquadId },
-                    t => new { k1 = t.GearNickName, k2 = t.GearSquadId },
-                    (g, t) => g.HasSoulPatch).Distinct();
-
-                var result = query.ToList();
-
-                Assert.Equal(2, result.Count);
-            }
+            AssertQueryScalar<Gear, CogTag, bool>(
+                (gs, ts) => gs.
+                    GroupJoin(
+                        ts,
+                        g => new { k1 = g.Nickname, k2 = (int?)g.SquadId },
+                        t => new { k1 = t.GearNickName, k2 = t.GearSquadId },
+                        (g, t) => g.HasSoulPatch)
+                    .Distinct());
         }
 
         [ConditionalFact]
         public virtual void Count_with_unflattened_groupjoin_is_evaluated_on_client()
         {
-            using (var context = CreateContext())
-            {
-                var query = context.Gears.GroupJoin(
-                    context.Tags,
-                    g => new { k1 = g.Nickname, k2 = (int?)g.SquadId },
-                    t => new { k1 = t.GearNickName, k2 = t.GearSquadId },
-                    (g, t) => g).Count();
-
-                Assert.Equal(5, query);
-            }
+            AssertSingleResult<Gear, CogTag, int>(
+                (gs, ts) => gs
+                    .GroupJoin(
+                        ts,
+                        g => new { k1 = g.Nickname, k2 = (int?)g.SquadId },
+                        t => new { k1 = t.GearNickName, k2 = t.GearSquadId },
+                        (g, t) => g)
+                    .Count());
         }
 
         [ConditionalFact]
         public virtual void FirstOrDefault_with_manually_created_groupjoin_is_translated_to_sql()
         {
-            using (var context = CreateContext())
-            {
-                var query = (from s in context.Squads
-                             join g in context.Gears on s.Id equals g.SquadId into grouping
-                             from g in grouping.DefaultIfEmpty()
-                             where s.Name == "Kilo"
-                             select  s).FirstOrDefault();
-
-                Assert.Equal("Kilo", query.Name);
-            }
+            AssertSingleResult<Squad, Gear, Squad>(
+                (ss, gs) =>
+                    (from s in ss
+                     join g in gs on s.Id equals g.SquadId into grouping
+                     from g in grouping.DefaultIfEmpty()
+                     where s.Name == "Kilo"
+                     select s).FirstOrDefault(),
+                elementAsserter: (e, a) => Assert.Equal(e.Id, a.Id));
         }
 
         [ConditionalFact]
         public virtual void Any_with_optional_navigation_as_subquery_predicate_is_translated_to_sql()
         {
-            using (var context = CreateContext())
-            {
-                var query = from s in context.Squads
-                            where !s.Members.Any(m => m.Tag.Note == "Dom's Tag")
-                            select s.Name;
-
-                var result = query.ToList();
-
-                Assert.Equal("Kilo", result.Single());
-            }
+            AssertQuery<Squad>(
+                ss => from s in ss
+                      where !s.Members.Any(m => m.Tag.Note == "Dom's Tag")
+                      select s.Name);
         }
 
         [ConditionalFact]
         public virtual void All_with_optional_navigation_is_translated_to_sql()
         {
-            using (var context = CreateContext())
-            {
-                var query = (from g in context.Gears
-                             select g).All(g => g.Tag.Note != "Foo");
-
-                Assert.True(query);
-            }
+            AssertSingleResult<Gear, bool>(
+                gs => (from g in gs
+                       select g).All(g => g.Tag.Note != "Foo"));
         }
 
         [ConditionalFact]
         public virtual void Non_flattened_GroupJoin_with_result_operator_evaluates_on_the_client()
         {
-            using (var context = CreateContext())
-            {
-                var query = context.Tags.GroupJoin(
-                    context.Gears,
+            AssertQueryScalar<CogTag, Gear, int>(
+                (ts, gs) => ts.GroupJoin(
+                    gs,
                     t => new { k1 = t.GearNickName, k2 = t.GearSquadId },
                     g => new { k1 = g.Nickname, k2 = (int?)g.SquadId },
-                    (k, r) => r.Count());
-
-                var result = query.ToList();
-
-                Assert.Equal(6, result.Count);
-                Assert.Equal(5, result.Count(r => r == 1));
-                Assert.Equal(1, result.Count(r => r == 0));
-            }
+                    (k, r) => r.Count()));
         }
 
         [ConditionalFact]
         public virtual void Client_side_equality_with_parameter_works_with_optional_navigations()
         {
-            using (var context = CreateContext())
-            {
-                var prm = "Marcus's Tag";
-                var query = context.Gears.Where(g => ClientEquals(g.Tag.Note, prm));
+            var prm = "Marcus's Tag";
 
-                var result = query.ToList();
-
-                Assert.Equal(1, result.Count);
-                Assert.Equal("Marcus", result[0].Nickname);
-            }
+            AssertQuery<Gear>(
+                gs => gs.Where(g => ClientEquals(g.Tag.Note, prm)),
+                elementAsserter: (e, a) => Assert.Equal(e.Nickname, a.Nickname));
         }
 
         private static bool ClientEquals(string first, string second)
@@ -2451,20 +2402,15 @@ namespace Microsoft.EntityFrameworkCore.Specification.Tests
         [ConditionalFact]
         public virtual void Contains_with_local_nullable_guid_list_closure()
         {
-            using (var context = CreateContext())
+            var ids = new List<Guid?>
             {
-                var ids = new List<Guid?>
-                {
-                    Guid.Parse("D2C26679-562B-44D1-AB96-23D1775E0926"),
-                    Guid.Parse("23CBCF9B-CE14-45CF-AAFA-2C2667EBFDD3"),
-                    Guid.Parse("AB1B82D7-88DB-42BD-A132-7EEF9AA68AF4")
-                };
+                Guid.Parse("D2C26679-562B-44D1-AB96-23D1775E0926"),
+                Guid.Parse("23CBCF9B-CE14-45CF-AAFA-2C2667EBFDD3"),
+                Guid.Parse("AB1B82D7-88DB-42BD-A132-7EEF9AA68AF4")
+            };
 
-                var query = context.Tags.Where(e => ids.Contains(e.Id)).ToList();
-
-                // Guids generated are random on each iteration.
-                Assert.Equal(0, query.Count);
-            }
+            AssertQuery<CogTag>(
+                ts => ts.Where(e => ids.Contains(e.Id)));
         }
 
         [ConditionalFact]
@@ -2597,23 +2543,16 @@ namespace Microsoft.EntityFrameworkCore.Specification.Tests
         [ConditionalFact]
         public virtual void Where_and_order_by_are_properly_lifted_from_subquery_created_by_tracking()
         {
-            using (var ctx = CreateContext())
-            {
-                var query = ctx.Gears
+            AssertQuery<Gear>(
+                gs => gs
                     .Where(g => g.FullName != "Augustus Cole")
                     .AsNoTracking()
                     .OrderBy(g => g.Rank)
                     .AsTracking()
                     .OrderBy(g => g.FullName)
                     .Where(g => !g.HasSoulPatch)
-                    .Select(g => g.FullName);
-
-                var result = query.ToList();
-
-                Assert.Equal(2, result.Count);
-                Assert.Equal("Dominic Santiago", result[0]);
-                Assert.Equal("Garron Paduk", result[1]);
-            }
+                    .Select(g => g.FullName),
+                verifyOrdered: true);
         }
 
         [ConditionalFact]
@@ -2638,95 +2577,61 @@ namespace Microsoft.EntityFrameworkCore.Specification.Tests
         [ConditionalFact]
         public virtual void Subquery_containing_SelectMany_projecting_main_from_clause_gets_lifted()
         {
-            using (var ctx = CreateContext())
-            {
-                var query = from g in (from gear in ctx.Gears
-                                       from tag in ctx.Tags
-                                       where gear.HasSoulPatch
-                                       orderby tag.Note
-                                       select gear).AsTracking()
-                            orderby g.FullName
-                            select g.FullName;
-
-                var result = query.ToList();
-
-                Assert.Equal(12, result.Count);
-                Assert.Equal(6, result.Count(r => r == "Damon Baird"));
-                Assert.Equal(6, result.Count(r => r == "Marcus Fenix"));
-                Assert.Equal("Damon Baird", result.First());
-                Assert.Equal("Marcus Fenix", result.Last());
-            }
+            AssertQuery<Gear, CogTag>(
+                (gs, ts) =>
+                    from g in (from gear in gs
+                               from tag in ts
+                               where gear.HasSoulPatch
+                               orderby tag.Note
+                               select gear).AsTracking()
+                    orderby g.FullName
+                    select g.FullName,
+                verifyOrdered: true);
         }
 
         [ConditionalFact]
         public virtual void Subquery_containing_join_projecting_main_from_clause_gets_lifted()
         {
-            using (var ctx = CreateContext())
-            {
-                var query = from g in (from gear in ctx.Gears
-                                       join tag in ctx.Tags on gear.Nickname equals tag.GearNickName
-                                       orderby tag.Note
-                                       select gear).AsTracking()
-                            orderby g.Nickname
-                            select g.Nickname;
-
-                var result = query.ToList();
-
-                Assert.Equal(5, result.Count);
-                Assert.Equal("Baird", result[0]);
-                Assert.Equal("Cole Train", result[1]);
-                Assert.Equal("Dom", result[2]);
-                Assert.Equal("Marcus", result[3]);
-                Assert.Equal("Paduk", result[4]);
-            }
+            AssertQuery<Gear, CogTag>(
+                (gs, ts) =>
+                    from g in (from gear in gs
+                               join tag in ts on gear.Nickname equals tag.GearNickName
+                               orderby tag.Note
+                               select gear).AsTracking()
+                    orderby g.Nickname
+                    select g.Nickname,
+                verifyOrdered: true);
         }
 
         [ConditionalFact]
         public virtual void Subquery_containing_left_join_projecting_main_from_clause_gets_lifted()
         {
-            using (var ctx = CreateContext())
-            {
-                var query = from g in (from gear in ctx.Gears
-                                       join tag in ctx.Tags on gear.Nickname equals tag.GearNickName into grouping
-                                       from tag in grouping.DefaultIfEmpty()
-                                       orderby gear.Rank
-                                       select gear).AsTracking()
-                            orderby g.Nickname
-                            select g.Nickname;
-
-                var result = query.ToList();
-
-                Assert.Equal(5, result.Count);
-                Assert.Equal("Baird", result[0]);
-                Assert.Equal("Cole Train", result[1]);
-                Assert.Equal("Dom", result[2]);
-                Assert.Equal("Marcus", result[3]);
-                Assert.Equal("Paduk", result[4]);
-            }
+            AssertQuery<Gear, CogTag>(
+                (gs, ts) =>
+                    from g in (from gear in gs
+                               join tag in ts on gear.Nickname equals tag.GearNickName into grouping
+                               from tag in grouping.DefaultIfEmpty()
+                               orderby gear.Rank
+                               select gear).AsTracking()
+                    orderby g.Nickname
+                    select g.Nickname,
+                verifyOrdered: true);
         }
 
         [ConditionalFact]
         public virtual void Subquery_containing_join_gets_lifted_clashing_names()
         {
-            using (var ctx = CreateContext())
-            {
-                var query = from gear in (from gear in ctx.Gears
-                                       join tag in ctx.Tags on gear.Nickname equals tag.GearNickName
-                                       orderby tag.Note
-                                       where tag.GearNickName != "Cole Train"
-                                       select gear).AsTracking()
-                            join tag in ctx.Tags on gear.Nickname equals tag.GearNickName
-                            orderby gear.Nickname, tag.Id
-                            select gear.Nickname;
-
-                var result = query.ToList();
-
-                Assert.Equal(4, result.Count);
-                Assert.Equal("Baird", result[0]);
-                Assert.Equal("Dom", result[1]);
-                Assert.Equal("Marcus", result[2]);
-                Assert.Equal("Paduk", result[3]);
-            }
+            AssertQuery<Gear, CogTag>(
+                (gs, ts) => 
+                    from gear in (from gear in gs
+                                    join tag in ts on gear.Nickname equals tag.GearNickName
+                                    orderby tag.Note
+                                    where tag.GearNickName != "Cole Train"
+                                    select gear).AsTracking()
+                    join tag in ts on gear.Nickname equals tag.GearNickName
+                    orderby gear.Nickname, tag.Id
+                    select gear.Nickname,
+                verifyOrdered: true);
         }
 
         [ConditionalFact]
@@ -2773,126 +2678,73 @@ namespace Microsoft.EntityFrameworkCore.Specification.Tests
         [ConditionalFact]
         public virtual void Subquery_with_result_operator_is_not_lifted()
         {
-            using (var ctx = CreateContext())
-            {
-                var query = from g in ctx.Gears.Where(g => !g.HasSoulPatch).OrderBy(g => g.FullName).Take(2).AsTracking()
-                            orderby g.Rank
-                            select g.FullName;
-
-                var result = query.ToList();
-
-                Assert.Equal(2, result.Count);
-                Assert.Equal("Augustus Cole", result[0]);
-                Assert.Equal("Dominic Santiago", result[1]);
-            }
+            AssertQuery<Gear>(
+                gs => from g in gs.Where(g => !g.HasSoulPatch).OrderBy(g => g.FullName).Take(2).AsTracking()
+                      orderby g.Rank
+                      select g.FullName,
+                verifyOrdered: true);
         }
 
         [ConditionalFact]
         public virtual void Select_length_of_string_property()
         {
-            using (var ctx = CreateContext())
-            {
-                var query = from w in ctx.Weapons
-                            select new { w.Name, w.Name.Length };
-
-                var result = query.ToList();
-                foreach (var r in result)
-                {
-                    Assert.Equal(r.Name.Length, r.Length);
-                }
-            }
+            AssertQuery<Weapon>(
+                ws => from w in ws
+                      select new { w.Name, w.Name.Length },
+                elementSorter: e => e.Name);
         }
 
         [ConditionalFact]
         public virtual void Client_method_on_collection_navigation_in_predicate()
         {
-            using (var ctx = CreateContext())
-            {
-                var query = from g in ctx.Gears
-                            where g.HasSoulPatch && FavoriteWeapon(g.Weapons).Name == "Marcus' Lancer"
-                            select g.Nickname;
-
-                var result = query.ToList();
-
-                Assert.Equal(1, result.Count);
-                Assert.Equal("Marcus", result[0]);
-            }
+            AssertQuery<Gear>(
+                gs => from g in gs
+                      where g.HasSoulPatch && FavoriteWeapon(g.Weapons).Name == "Marcus' Lancer"
+                      select g.Nickname);
         }
 
         [ConditionalFact]
         public virtual void Client_method_on_collection_navigation_in_predicate_accessed_by_ef_property()
         {
-            using (var ctx = CreateContext())
-            {
-                var query = from g in ctx.Gears
-                            where !g.HasSoulPatch && FavoriteWeapon(EF.Property<List<Weapon>>(g, "Weapons")).Name == "Cole's Gnasher"
-                            select g.Nickname;
-
-                var result = query.ToList();
-
-                Assert.Equal(1, result.Count);
-                Assert.Equal("Cole Train", result[0]);
-            }
+            AssertQuery<Gear>(
+                gs => from g in gs
+                      where !g.HasSoulPatch && FavoriteWeapon(EF.Property<List<Weapon>>(g, "Weapons")).Name == "Cole's Gnasher"
+                      select g.Nickname,
+                gs => from g in gs
+                      where !g.HasSoulPatch && FavoriteWeapon(g.Weapons).Name == "Cole's Gnasher"
+                      select g.Nickname);
         }
 
         [ConditionalFact]
         public virtual void Client_method_on_collection_navigation_in_order_by()
         {
-            using (var ctx = CreateContext())
-            {
-                var query = from g in ctx.Gears
-                            where !g.HasSoulPatch
-                            orderby FavoriteWeapon(g.Weapons).Name descending
-                            select g.Nickname;
-
-                var result = query.ToList();
-
-                Assert.Equal(3, result.Count);
-                Assert.Equal("Paduk", result[0]);
-                Assert.Equal("Dom", result[1]);
-                Assert.Equal("Cole Train", result[2]);
-            }
+            AssertQuery<Gear>(
+                gs => from g in gs
+                      where !g.HasSoulPatch
+                      orderby FavoriteWeapon(g.Weapons).Name descending
+                      select g.Nickname,
+                verifyOrdered: true);
         }
 
         [ConditionalFact]
         public virtual void Client_method_on_collection_navigation_in_additional_from_clause()
         {
-            using (var ctx = CreateContext())
-            {
-                var query = from g in ctx.Gears.OfType<Officer>()
-                            from v in Veterans(g.Reports)
-                            orderby g.Nickname, v.Nickname
-                            select new { g = g.Nickname, v = v.Nickname };
-                            
-                var result = query.ToList();
-
-                Assert.Equal(3, result.Count);
-                Assert.True(result.Select(r => r.g).All(g => g == "Marcus"));
-                Assert.Equal("Baird", result[0].v);
-                Assert.Equal("Cole Train", result[1].v);
-                Assert.Equal("Dom", result[2].v);
-            }
+            AssertQuery<Gear>(
+                gs => from g in gs.OfType<Officer>()
+                      from v in Veterans(g.Reports)
+                      select new { g = g.Nickname, v = v.Nickname },
+                elementSorter: e => e.g + e.v);
         }
 
         [ConditionalFact]
         public virtual void Client_method_on_collection_navigation_in_outer_join_key()
         {
-            using (var ctx = CreateContext())
-            {
-                var query = from o in ctx.Gears.OfType<Officer>()
-                            join g in ctx.Gears on FavoriteWeapon(o.Weapons).Name equals FavoriteWeapon(g.Weapons).Name
-                            where o.HasSoulPatch
-                            orderby o.Nickname, g.Nickname
-                            select new { o = o.Nickname, g = g.Nickname };
-
-                var result = query.ToList();
-
-                Assert.Equal(2, result.Count);
-                Assert.Equal("Baird", result[0].o);
-                Assert.Equal("Baird", result[0].g);
-                Assert.Equal("Marcus", result[1].o);
-                Assert.Equal("Marcus", result[1].g);
-            }
+            AssertQuery<Gear>(
+                gs => from o in gs.OfType<Officer>()
+                      join g in gs on FavoriteWeapon(o.Weapons).Name equals FavoriteWeapon(g.Weapons).Name
+                      where o.HasSoulPatch
+                      select new { o = o.Nickname, g = g.Nickname },
+                elementSorter: e => e.o + e.g);
         }
 
         private static Weapon FavoriteWeapon(IEnumerable<Weapon> weapons)
@@ -3039,7 +2891,7 @@ namespace Microsoft.EntityFrameworkCore.Specification.Tests
                 Assert.Equal("Queen Myrrah", result[0].Commander.Name);
                 Assert.Equal(4, result[0].Leaders.Count);
                 Assert.Equal("Unknown", result[1].Commander.Name);
-                Assert.Equal(1, result[1].Leaders.Count);
+                Assert.Equal(2, result[1].Leaders.Count);
             }
         }
 
@@ -3061,7 +2913,7 @@ namespace Microsoft.EntityFrameworkCore.Specification.Tests
                 Assert.Equal("Queen Myrrah", result[0].Commander.Name);
                 Assert.Equal(4, result[0].Leaders.Count);
                 Assert.Equal("Unknown", result[1].Commander.Name);
-                Assert.Equal(1, result[1].Leaders.Count);
+                Assert.Equal(2, result[1].Leaders.Count);
             }
         }
 
@@ -3083,7 +2935,7 @@ namespace Microsoft.EntityFrameworkCore.Specification.Tests
                 Assert.Equal("Queen Myrrah", result[0].Commander.Name);
                 Assert.Equal(4, result[0].Leaders.Count);
                 Assert.Equal("Unknown", result[1].Commander.Name);
-                Assert.Equal(1, result[1].Leaders.Count);
+                Assert.Equal(2, result[1].Leaders.Count);
             }
         }
 
@@ -3106,7 +2958,7 @@ namespace Microsoft.EntityFrameworkCore.Specification.Tests
                 Assert.Equal("Queen Myrrah", result[0].lh.Commander.Name);
                 Assert.Equal(4, result[0].lh.Leaders.Count);
                 Assert.Equal("Unknown", result[2].lh.Commander.Name);
-                Assert.Equal(1, result[2].lh.Leaders.Count);
+                Assert.Equal(2, result[2].lh.Leaders.Count);
             }
         }
 
@@ -3213,6 +3065,68 @@ namespace Microsoft.EntityFrameworkCore.Specification.Tests
             return expression();
         }
 
+
+        #region AssertSingleResult
+
+        private void AssertSingleResult<TItem1, TResult>(
+            Func<IQueryable<TItem1>, TResult> query,
+            Action<TResult, TResult> elementAsserter = null)
+            where TItem1 : class
+            => AssertSingleResult(query, query, elementAsserter);
+
+        private void AssertSingleResult<TItem1, TResult>(
+            Func<IQueryable<TItem1>, TResult> efQuery,
+            Func<IQueryable<TItem1>, TResult> l2oQuery,
+            Action<TResult, TResult> elementAsserter = null)
+            where TItem1 : class
+        {
+            using (var context = CreateContext())
+            {
+                var actual = efQuery(context.Set<TItem1>());
+                var expected = l2oQuery(GearsOfWarData.Set<TItem1>());
+
+                if (elementAsserter != null)
+                {
+                    elementAsserter(expected, actual);
+                }
+                else
+                { 
+                    Assert.Equal(expected, actual);
+                }
+            }
+        }
+
+        private void AssertSingleResult<TItem1, TItem2, TResult>(
+            Func<IQueryable<TItem1>, IQueryable<TItem2>, TResult> query,
+            Action<TResult, TResult> elementAsserter = null)
+            where TItem1 : class
+            where TItem2 : class
+            => AssertSingleResult(query, query, elementAsserter);
+
+        private void AssertSingleResult<TItem1, TItem2, TResult>(
+            Func<IQueryable<TItem1>, IQueryable<TItem2>, TResult> efQuery,
+            Func<IQueryable<TItem1>, IQueryable<TItem2>, TResult> l2oQuery,
+            Action<TResult, TResult> elementAsserter = null)
+            where TItem1 : class
+            where TItem2 : class
+        {
+            using (var context = CreateContext())
+            {
+                var actual = efQuery(context.Set<TItem1>(), context.Set<TItem2>());
+                var expected = l2oQuery(GearsOfWarData.Set<TItem1>(), GearsOfWarData.Set<TItem2>());
+
+                if (elementAsserter != null)
+                {
+                    elementAsserter(expected, actual);
+                }
+                else
+                {
+                    Assert.Equal(expected, actual);
+                }
+            }
+        }
+
+        #endregion
 
 
         #region AssertQuery

@@ -89,8 +89,8 @@ namespace Microsoft.EntityFrameworkCore.Specification.Tests.TestModels.GearsOfWa
         public static IReadOnlyList<Squad> CreateSquads()
             => new List<Squad>
             {
-                new Squad { Id = 1, Name = "Delta", Members = new List<Gear>() },
-                new Squad { Id = 2, Name = "Kilo", Members = new List<Gear>() }
+                new Squad { Id = 1, Name = "Delta" },
+                new Squad { Id = 2, Name = "Kilo" }
             };
 
         public static IReadOnlyList<Mission> CreateMissions()
@@ -112,17 +112,17 @@ namespace Microsoft.EntityFrameworkCore.Specification.Tests.TestModels.GearsOfWa
         public static IReadOnlyList<City> CreateCities()
             => new List<City>
             {
-                new City { Location = "Jacinto's location", Name = "Jacinto", BornGears = new List<Gear>(), StationedGears = new List<Gear>() },
-                new City { Location = "Ephyra's location", Name = "Ephyra", BornGears = new List<Gear>(), StationedGears = new List<Gear>() },
-                new City { Location = "Hanover's location", Name = "Hanover", BornGears = new List<Gear>(), StationedGears = new List<Gear>() },
-                new City { Location = "Unknown", Name = "Unknown", BornGears = new List<Gear>(), StationedGears = new List<Gear>() }
+                new City { Location = "Jacinto's location", Name = "Jacinto" },
+                new City { Location = "Ephyra's location", Name = "Ephyra" },
+                new City { Location = "Hanover's location", Name = "Hanover" },
+                new City { Location = "Unknown", Name = "Unknown" }
             };
 
         public static IReadOnlyList<Weapon> CreateWeapons()
             => new List<Weapon>
             {
                 new Weapon { Id = 1, Name = "Marcus' Lancer", AmmunitionType = AmmunitionType.Cartridge, IsAutomatic = true },
-                new Weapon { Id = 2, Name = "Marcus' Gnasher", AmmunitionType = AmmunitionType.Shell, IsAutomatic = false, SynergyWithId = 1 },
+                new Weapon { Id = 2, Name = "Marcus' Gnasher", AmmunitionType = AmmunitionType.Shell, IsAutomatic = false },
                 new Weapon { Id = 3, Name = "Dom's Hammerburst", AmmunitionType = AmmunitionType.Cartridge, IsAutomatic = false },
                 new Weapon { Id = 4, Name = "Dom's Gnasher", AmmunitionType = AmmunitionType.Shell, IsAutomatic = false },
                 new Weapon { Id = 5, Name = "Cole's Gnasher", AmmunitionType = AmmunitionType.Shell, IsAutomatic = false },
@@ -208,7 +208,7 @@ namespace Microsoft.EntityFrameworkCore.Specification.Tests.TestModels.GearsOfWa
                 new LocustLeader { Name = "General Karn", ThreatLevel = 3 },
                 new LocustLeader { Name = "General RAAM", ThreatLevel = 4 },
                 new LocustLeader { Name = "High Priest Skorge", ThreatLevel = 1 },
-                new LocustCommander { Name = "Queen Myrrah", ThreatLevel = 5, DefeatedByNickname = "Marcus", DefeatedBySquadId = 1 },
+                new LocustCommander { Name = "Queen Myrrah", ThreatLevel = 5 },
                 new LocustLeader { Name = "The Speaker", ThreatLevel = 3 },
                 new LocustCommander { Name = "Unknown", ThreatLevel = 0 },
             };
@@ -236,9 +236,9 @@ namespace Microsoft.EntityFrameworkCore.Specification.Tests.TestModels.GearsOfWa
             IReadOnlyList<Faction> factions)
         {
             squadMissions[0].Mission = missions[0];
-            squadMissions[0].Squad = squads[0]; 
-            squadMissions[1].Mission = missions[1]; 
-            squadMissions[1].Squad = squads[0]; 
+            squadMissions[0].Squad = squads[0];
+            squadMissions[1].Mission = missions[1];
+            squadMissions[1].Squad = squads[0];
             squadMissions[2].Mission = missions[2];
             squadMissions[2].Squad = squads[1];
 
@@ -248,33 +248,40 @@ namespace Microsoft.EntityFrameworkCore.Specification.Tests.TestModels.GearsOfWa
             squads[0].Missions = new List<SquadMission> { squadMissions[0], squadMissions[1] };
             squads[1].Missions = new List<SquadMission> { squadMissions[2] };
 
+            squads[0].Members = new List<Gear> { gears[0], gears[1], gears[3], gears[4] };
+            squads[1].Members = new List<Gear> { gears[2] };
+
             weapons[1].SynergyWith = weapons[0];
-            //weapons[0].SynergyWith = weapons[1]; // TODO: ?
+            weapons[1].SynergyWithId = weapons[0].Id;
 
             // dom
             gears[0].AssignedCity = cities[1];
             gears[0].CityOfBirth = cities[1];
+            gears[0].CityOrBirthName = cities[1].Name;
             gears[0].Squad = squads[0];
             gears[0].Tag = tags[0];
             gears[0].Weapons = new List<Weapon> { weapons[2], weapons[3] };
 
             // cole
-            gears[1].CityOfBirth = cities[2];
             gears[1].AssignedCity = cities[0];
+            gears[1].CityOfBirth = cities[2];
+            gears[1].CityOrBirthName = cities[2].Name;
             gears[1].Squad = squads[0];
             gears[1].Tag = tags[1];
             gears[1].Weapons = new List<Weapon> { weapons[4], weapons[5] };
 
             // paduk
-            gears[2].CityOfBirth = cities[3];
             gears[2].AssignedCity = cities[3];
+            gears[2].CityOfBirth = cities[3];
+            gears[2].CityOrBirthName = cities[3].Name;
             gears[2].Squad = squads[1];
             gears[2].Tag = tags[2];
             gears[2].Weapons = new List<Weapon> { weapons[8], };
 
             // baird
-            gears[3].CityOfBirth = cities[3];
             gears[3].AssignedCity = cities[0];
+            gears[3].CityOfBirth = cities[3];
+            gears[3].CityOrBirthName = cities[3].Name;
             gears[3].Squad = squads[1];
             gears[3].Tag = tags[3];
             gears[3].Weapons = new List<Weapon> { weapons[6], weapons[7] };
@@ -282,6 +289,7 @@ namespace Microsoft.EntityFrameworkCore.Specification.Tests.TestModels.GearsOfWa
 
             // marcus
             gears[4].CityOfBirth = cities[0];
+            gears[4].CityOrBirthName = cities[0].Name;
             gears[4].Squad = squads[0];
             gears[4].Tag = tags[4];
             gears[4].Weapons = new List<Weapon> { weapons[0], weapons[1] };
@@ -297,16 +305,44 @@ namespace Microsoft.EntityFrameworkCore.Specification.Tests.TestModels.GearsOfWa
             cities[3].StationedGears = new List<Gear> { gears[2] };
 
             weapons[0].Owner = gears[4];
+            weapons[0].OwnerFullName = gears[4].FullName;
             weapons[1].Owner = gears[4];
+            weapons[1].OwnerFullName = gears[4].FullName;
             weapons[2].Owner = gears[0];
+            weapons[2].OwnerFullName = gears[0].FullName;
             weapons[3].Owner = gears[0];
+            weapons[3].OwnerFullName = gears[0].FullName;
             weapons[4].Owner = gears[1];
+            weapons[4].OwnerFullName = gears[1].FullName;
             weapons[5].Owner = gears[1];
+            weapons[5].OwnerFullName = gears[1].FullName;
             weapons[6].Owner = gears[3];
+            weapons[6].OwnerFullName = gears[3].FullName;
             weapons[7].Owner = gears[3];
+            weapons[7].OwnerFullName = gears[3].FullName;
             weapons[8].Owner = gears[2];
+            weapons[8].OwnerFullName = gears[2].FullName;
+
+            tags[0].Gear = gears[0];
+            tags[0].GearNickName = gears[0].Nickname;
+            tags[0].GearSquadId = gears[0].SquadId;
+            tags[1].Gear = gears[1];
+            tags[1].GearNickName = gears[1].Nickname;
+            tags[1].GearSquadId = gears[1].SquadId;
+            tags[2].Gear = gears[2];
+            tags[2].GearNickName = gears[2].Nickname;
+            tags[2].GearSquadId = gears[2].SquadId;
+            tags[3].Gear = gears[3];
+            tags[3].GearNickName = gears[3].Nickname;
+            tags[3].GearSquadId = gears[3].SquadId;
+            tags[4].Gear = gears[4];
+            tags[4].GearNickName = gears[4].Nickname;
+            tags[4].GearSquadId = gears[4].SquadId;
 
             ((LocustCommander)locustLeaders[3]).DefeatedBy = gears[4];
+            ((LocustCommander)locustLeaders[3]).DefeatedByNickname = gears[4].Nickname;
+            ((LocustCommander)locustLeaders[3]).DefeatedBySquadId = gears[4].SquadId;
+
             ((LocustCommander)locustLeaders[3]).CommandingFaction = ((LocustHorde)factions[0]);
             ((LocustCommander)locustLeaders[5]).CommandingFaction = ((LocustHorde)factions[1]);
 
