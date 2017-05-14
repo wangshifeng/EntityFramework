@@ -1883,7 +1883,7 @@ WHERE ([t].[Note] <> N'K.I.A.') OR [t].[Note] IS NULL");
             base.Optional_navigation_type_compensation_works_with_projection_into_anonymous_type();
 
             AssertSql(
-                @"SELECT [t0].[SquadId] AS [SquadId]
+                @"SELECT [t0].[SquadId]
 FROM [CogTag] AS [t]
 LEFT JOIN (
     SELECT [t.Gear].*

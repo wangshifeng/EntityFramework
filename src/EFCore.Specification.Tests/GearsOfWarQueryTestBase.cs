@@ -1042,7 +1042,7 @@ namespace Microsoft.EntityFrameworkCore.Specification.Tests
             using (var context = CreateContext())
             {
                 var query = context.Gears
-                    .Where(g => (g == null ? (bool?)null : (bool?)(g.LeaderNickname == "Marcus")) == (bool?)true)
+                    .Where(g => (g == null ? null : g.LeaderNickname) == "Marcus" == (bool?)true)
                     .ToList();
 
                 var result = query.ToList();
@@ -1102,7 +1102,7 @@ namespace Microsoft.EntityFrameworkCore.Specification.Tests
             using (var context = CreateContext())
             {
                 var query = context.Gears
-                    .Where(g => (null == EF.Property<string>(g, "LeaderNickname") ? (bool?)null : (bool?)(g.LeaderNickname.Length == 5)) == (bool?)true)
+                    .Where(g => (null == EF.Property<string>(g, "LeaderNickname") ? (int?)null : g.LeaderNickname.Length) == 5 == (bool?)true)
                     .ToList();
 
                 var result = query.ToList();
@@ -1120,7 +1120,7 @@ namespace Microsoft.EntityFrameworkCore.Specification.Tests
             using (var context = CreateContext())
             {
                 var query = context.Gears
-                    .Where(g => (null != g.LeaderNickname ? (bool?)(EF.Property<string>(g, "LeaderNickname").Length == 5) : (bool?)null) == (bool?)true)
+                    .Where(g => (null != g.LeaderNickname ? (int?)(EF.Property<string>(g, "LeaderNickname").Length) : (int?)null) == 5 == (bool?)true)
                     .ToList();
 
                 var result = query.ToList();
